@@ -1,9 +1,18 @@
+import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import PreInterviewPage from "./pages/PreInterviewPage";
+import Result from "./pages/Result";
+import Interview from "./pages/Interview";
 
 const App = () => {
   return (
-    <h1 className='text-red-500 underline text-5xl text-center'>
-      Hello
-    </h1>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<PreInterviewPage />} />
+        <Route path="/result" element={<Result />} />
+        <Route path="/interview" element={<Interview />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
