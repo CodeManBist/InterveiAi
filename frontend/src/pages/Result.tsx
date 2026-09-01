@@ -143,7 +143,7 @@ const Result = () => {
           <Button
             onClick={() => navigate("/")}
             variant="ghost"
-            className="text-slate-400 hover:text-white mb-6"
+            className="text-slate-400mb-6"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Home
@@ -316,7 +316,7 @@ const Result = () => {
           </Button>
           <Button
             variant="outline"
-            className="flex-1 h-12 border-white/10 text-white hover:bg-white/5"
+            className="flex-1 h-12 border-white/10 text-black "
           >
             <Download className="w-4 h-4 mr-2" />
             Download Results
