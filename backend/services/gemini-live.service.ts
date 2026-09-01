@@ -1,7 +1,12 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Modality } from "@google/genai";
+
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey) {
+  throw new Error("GEMINI_API_KEY environment variable is not set");
+}
 
 const client = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+  apiKey,
 });
 
 export const createLiveToken = async () => {
@@ -17,13 +22,13 @@ export const createLiveToken = async () => {
 
       newSessionExpireTime: new Date(
         Date.now() + 60 * 1000
-      ),
+      ).toISOString(),
 
       liveConnectConstraints: {
         model: "gemini-3.1-flash-live-preview",
 
         config: {
-          responseModalities: ["AUDIO"],
+          responseModalities: [Modality.AUDIO],
 
           sessionResumption: {},
         },

@@ -50,7 +50,14 @@ const PreInterviewPage = () => {
       );
 
       console.log("Backend response:", response.data);
-      navigate("/interview");
+
+      const { interviewId } = response.data;
+
+      if(!interviewId) {
+        setError("Interview could not be created.");
+      }
+
+      navigate(`/interview/${interviewId}`);
 
     } catch (error) {
       console.error(error);

@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import PreInterviewPage from "./pages/PreInterviewPage";
 import Result from "./pages/Result";
@@ -9,8 +8,8 @@ const App = () => {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<PreInterviewPage />} />
-        <Route path="/result" element={<Result />} />
-        <Route path="/interview" element={<Interview />} />
+        <Route path="/interview/:interviewId" element={<Interview />} />
+        <Route path="/result/:interviewId" element={<Result />} />
       </Routes>
     </BrowserRouter>
   )

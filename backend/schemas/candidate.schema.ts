@@ -13,6 +13,13 @@ const projectSchema = z.object({
   technologies: z.array(z.string()),
 });
 
+const educationSchema = z.object({
+  degree: z.string(),
+  institution: z.string(),
+  duration: z.string(),
+  details: z.string(),
+});
+
 export const candidateProfileSchema = z.object({
   name: z.string(),
 
@@ -20,11 +27,13 @@ export const candidateProfileSchema = z.object({
 
   skills: z.array(z.string()),
 
+  technologies: z.array(z.string()),
+
   experience: z.array(experienceSchema),
 
   projects: z.array(projectSchema),
 
-  education: z.array(z.string()),
+  education: z.array(educationSchema),
 
   certifications: z.array(z.string()),
 });
