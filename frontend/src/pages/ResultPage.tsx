@@ -32,7 +32,7 @@ interface CandidateProfile {
   github?: string;
 }
 
-const Result = () => {
+const ResultPage = () => {
   const navigate = useNavigate();
   const { interviewId } = useParams<{ interviewId: string }>();
 
@@ -331,4 +331,4 @@ const Result = () => {
   );
 };
 
-export default Result;
+export default ResultPage;

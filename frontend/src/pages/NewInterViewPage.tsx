@@ -18,7 +18,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 
-const PreInterviewPage = () => {
+const NewInterviewPage = () => {
   const navigate = useNavigate();
 
   const [githubUsername, setGithubUsername] = useState("");
@@ -231,4 +231,4 @@ const PreInterviewPage = () => {
   );
 };
 
-export default PreInterviewPage;
+export default NewInterviewPage;

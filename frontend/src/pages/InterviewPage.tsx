@@ -35,7 +35,7 @@ interface CandidateProfile {
 
 const MAX_QUESTIONS = 10;
 
-const Interview = () => {
+const InterviewPage = () => {
   const navigate = useNavigate();
 
   const { interviewId } =
@@ -1269,4 +1269,4 @@ const Interview = () => {
   );
 };
 
-export default Interview;
+export default InterviewPage;
