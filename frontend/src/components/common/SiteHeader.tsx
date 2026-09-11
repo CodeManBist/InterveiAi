@@ -26,7 +26,7 @@ export function SiteHeader() {
           </Button>
 
           <Button asChild size="sm">
-            <Link to="/interview/new">Start Interview</Link>
+            <Link to="/new-interview">Start Interview</Link>
           </Button>
         </div>
 
@@ -61,7 +61,7 @@ export function SiteHeader() {
 
             <Button asChild size="sm" className="flex-1">
               <Link
-                to="/interview/new"
+                to="/new-interview"
                 onClick={() => setOpen(false)}
               >
                 Start Interview

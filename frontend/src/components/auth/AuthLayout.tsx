@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 
 import { Logo } from "@/components/brand/logo";
-import { DashboardPreview } from "@/components/product/dashboard-preview";
+import { DashboardPreview } from "@/components/landing/DashboardPreview";
 
-export function AuthLayout({ children }) {
+export function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Left side */}
