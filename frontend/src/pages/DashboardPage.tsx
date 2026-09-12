@@ -35,7 +35,7 @@ function DashboardPage() {
           subtitle="Ready for your next interview?"
           action={
             <Button className="flex items-center justify-center gap-2 py-5 px-3" asChild>
-              <Link className="flex items-center justify-center gap-2" to="/interview/new">
+              <Link className="flex items-center justify-center gap-2" to="/new-interview">
                 <Plus className="h-4 w-4" />
                 New Interview
               </Link>

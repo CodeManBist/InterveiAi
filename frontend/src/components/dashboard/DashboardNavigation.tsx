@@ -20,7 +20,7 @@ const nav = [
   },
   {
     label: "New Interview",
-    to: "/interview/new",
+    to: "/new-interview",
     icon: Plus,
   },
 ] as const;

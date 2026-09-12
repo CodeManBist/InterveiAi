@@ -1,37 +1,43 @@
-import { useState } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { Upload, FileText, Loader2 } from "lucide-react";
 
-import {
-  GitBranch,
-  Upload,
-  FileText,
-  ArrowRight,
-  Sparkles,
-  Loader2
-} from "lucide-react";
-
-import { Input } from "@/components/ui/input";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-const NewInterviewPage = () => {
+function NewInterviewPage() {
   const navigate = useNavigate();
 
-  const [githubUsername, setGithubUsername] = useState("");
+  const [github, setGithub] = useState("");
   const [resume, setResume] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleResumeChange = (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
 
-    if (!githubUsername || !resume) {
-      setError("Please enter your GitHub username and upload your resume.");
+    if (!file) return;
+
+    setResume(file);
+    setError("");
+  };
+
+  const handleSubmit = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    if (!github.trim() || !resume) {
+      setError(
+        "Please enter your GitHub username and upload your resume.",
+      );
       return;
     }
 
@@ -41,133 +47,123 @@ const NewInterviewPage = () => {
 
       const formData = new FormData();
 
-      formData.append("githubUsername", githubUsername);
+      formData.append("githubUsername", github.trim());
       formData.append("resume", resume);
 
       const response = await axios.post(
         "http://localhost:3000/pre-interview",
-        formData
+        formData,
       );
 
       console.log("Backend response:", response.data);
 
       const { interviewId } = response.data;
 
-      if(!interviewId) {
+      if (!interviewId) {
         setError("Interview could not be created.");
+        return;
       }
 
       navigate(`/interview/${interviewId}`);
-
     } catch (error) {
-      console.error(error);
-      setError("Something went wrong. Please try again.");
+      console.error("Failed to create interview:", error);
+
+      if (axios.isAxiosError(error)) {
+        setError(
+          error.response?.data?.message ||
+            "Something went wrong. Please try again.",
+        );
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6 py-12 relative overflow-hidden">
+    <DashboardLayout>
+      <div className="mx-auto max-w-[1200px] px-6 py-10 lg:px-10">
+        <PageHeader
+          title="New Interview"
+          subtitle="Share your GitHub profile and resume to create a personalized interview."
+        />
 
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl" />
-
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl" />
-
-      <div className="relative w-full max-w-2xl">
-
-        {/* Header */}
-        <div className="text-center mb-8">
-
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm text-slate-300 mb-5">
-            <Sparkles className="w-4 h-4 text-violet-400" />
-            AI-powered technical interview
-          </div>
-
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-            Let's prepare your
-            <span className="text-violet-400"> interview</span>
-          </h1>
-
-          <p className="text-slate-400 mt-4 max-w-lg mx-auto">
-            Share your GitHub profile and resume. We'll analyze your
-            experience and create a personalized AI interview.
-          </p>
-
-        </div>
-
-        {/* Card */}
-        <Card className="bg-white/[0.04] border-white/10 backdrop-blur-xl shadow-2xl p-5">
-
-          <CardContent>
-
-            <form onSubmit={handleSubmit} className="space-y-7">
-
+        <form onSubmit={handleSubmit}>
+          <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
+            {/* Main Form */}
+            <div className="space-y-8">
               {/* GitHub */}
-              <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="github">
+                  GitHub Username
+                </Label>
 
-                <label className="text-sm font-medium text-slate-200">
-                  GitHub username
-                </label>
+                <Input
+                  id="github"
+                  value={github}
+                  onChange={(event) =>
+                    setGithub(event.target.value)
+                  }
+                  placeholder="e.g. codemanbeast"
+                  disabled={loading}
+                  className="w-full"
+                />
 
-                <div className="relative pt-3">
-
-                  <GitBranch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-
-                  <Input
-                    value={githubUsername}
-                    onChange={(e) =>
-                      setGithubUsername(e.target.value)
-                    }
-                    placeholder="e.g. codemanbeast"
-                    className="h-12 pl-11 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-violet-500"
-                  />
-
-                </div>
-
-                <p className="text-xs text-slate-500">
-                  We'll analyze your public repositories and projects.
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  We'll analyze your public repositories and
+                  projects.
                 </p>
-
               </div>
 
               {/* Resume */}
               <div className="space-y-3">
-
-                <label className="text-sm font-medium text-slate-200">
+                <Label htmlFor="resume">
                   Resume
-                </label>
+                </Label>
 
                 <label
                   htmlFor="resume"
-                  className="group flex flex-col items-center justify-center w-full h-40 rounded-xl border border-dashed border-white/15 bg-white/[0.02] hover:bg-white/[0.05] hover:border-violet-500/50 transition cursor-pointer"
+                  className="flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-border bg-card px-5 py-6 transition-colors hover:border-foreground/25"
                 >
-
                   {resume ? (
                     <>
-                      <FileText className="w-8 h-8 text-violet-400 mb-3" />
+                      <FileText
+                        className="h-5 w-5 shrink-0 text-primary"
+                        strokeWidth={1.6}
+                      />
 
-                      <p className="text-sm font-medium text-white">
-                        {resume.name}
-                      </p>
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-medium">
+                          {resume.name}
+                        </p>
 
-                      <p className="text-xs text-slate-500 mt-1">
-                        {(resume.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
+                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                          {(
+                            resume.size /
+                            1024 /
+                            1024
+                          ).toFixed(2)}{" "}
+                          MB
+                        </p>
+                      </div>
                     </>
                   ) : (
                     <>
-                      <div className="w-11 h-11 rounded-full bg-violet-500/10 flex items-center justify-center mb-3">
-                        <Upload className="w-5 h-5 text-violet-400" />
+                      <Upload
+                        className="h-5 w-5 shrink-0 text-primary"
+                        strokeWidth={1.6}
+                      />
+
+                      <div>
+                        <p className="text-[13px] font-medium">
+                          Upload your resume
+                        </p>
+
+                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                          PDF or DOCX, up to 5 MB
+                        </p>
                       </div>
-
-                      <p className="text-sm font-medium text-slate-200">
-                        Upload your resume
-                      </p>
-
-                      <p className="text-xs text-slate-500 mt-1">
-                        PDF, DOC or DOCX
-                      </p>
                     </>
                   )}
 
@@ -176,59 +172,95 @@ const NewInterviewPage = () => {
                     type="file"
                     accept=".pdf,.doc,.docx"
                     className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-
-                      if (file) {
-                        setResume(file);
-                      }
-                    }}
+                    disabled={loading}
+                    onChange={handleResumeChange}
                   />
-
                 </label>
-
               </div>
 
               {/* Error */}
               {error && (
-                <p className="text-sm text-red-400">
+                <p className="text-sm text-destructive">
                   {error}
                 </p>
               )}
+            </div>
 
-              {/* Submit */}
+            {/* Interview Summary */}
+            <aside className="h-fit rounded-xl border border-border bg-card p-6 lg:sticky lg:top-10">
+              <p className="label-eyebrow">
+                Interview Preparation
+              </p>
+
+              <dl className="mt-5 space-y-3 text-[13px]">
+                <div className="flex justify-between gap-6 border-b border-border pb-3">
+                  <dt className="text-muted-foreground">
+                    GitHub
+                  </dt>
+
+                  <dd className="max-w-[180px] truncate text-right font-medium">
+                    {github || "Not provided"}
+                  </dd>
+                </div>
+
+                <div className="flex justify-between gap-6 border-b border-border pb-3">
+                  <dt className="text-muted-foreground">
+                    Resume
+                  </dt>
+
+                  <dd className="max-w-[180px] truncate text-right font-medium">
+                    {resume ? resume.name : "Not uploaded"}
+                  </dd>
+                </div>
+
+                <div className="flex justify-between gap-6 border-b border-border pb-3">
+                  <dt className="text-muted-foreground">
+                    Analysis
+                  </dt>
+
+                  <dd className="text-right font-medium">
+                    AI Powered
+                  </dd>
+                </div>
+
+                <div className="flex justify-between gap-6">
+                  <dt className="text-muted-foreground">
+                    Mode
+                  </dt>
+
+                  <dd className="text-right font-medium">
+                    Voice
+                  </dd>
+                </div>
+              </dl>
+
               <Button
                 type="submit"
-                disabled={loading || !githubUsername || !resume}
-                className="w-full h-12 bg-violet-600 hover:bg-violet-500 text-white font-medium"
+                disabled={
+                  loading ||
+                  !github.trim() ||
+                  !resume
+                }
+                className="mt-6 w-full"
               >
                 {loading ? (
                   <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Preparing your interview...
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Preparing...
                   </>
                 ) : (
                   <>
-                    Start interview preparation
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                    Start Interview
+                    <Upload className="h-4 w-4" />
                   </>
                 )}
               </Button>
-
-            </form>
-
-          </CardContent>
-
-        </Card>
-
-        <p className="text-center text-xs text-slate-600 mt-6">
-          Your information is only used to personalize your interview.
-        </p>
-
+            </aside>
+          </div>
+        </form>
       </div>
-
-    </main>
+    </DashboardLayout>
   );
-};
+}
 
 export default NewInterviewPage;
