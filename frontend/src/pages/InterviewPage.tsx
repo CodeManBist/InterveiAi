@@ -1,16 +1,20 @@
-import { useRef, useState, useEffect } from "react";
+
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
-
 import {
+  ArrowRight,
+  Loader2,
   Mic,
   MicOff,
-  LogOut,
-  Loader2,
+  PhoneOff,
+  Sparkles,
   Volume2,
-  Brain,
-  MessageCircle,
 } from "lucide-react";
+
+import { LogoMark } from "@/components/brand/logo";
+import { Waveform } from "@/components/landing/ScreenFrame";
+import { Button } from "@/components/ui/button";
 
 import { connectToGemini } from "../utils/geminiWebSocket";
 import {
@@ -18,8 +22,7 @@ import {
   AudioPlayer,
 } from "../utils/mediaUtils";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface CandidateProfile {
   name?: string;
@@ -53,10 +56,6 @@ const InterviewPage = () => {
 
   const [questionCount, setQuestionCount] = useState(0);
 
-  const questionCountRef = useRef(0);
-
-  const messageSaveChainRef = useRef<Promise<unknown>>(Promise.resolve());
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -67,11 +66,43 @@ const InterviewPage = () => {
     useState(false);
 
   // --------------------------------
+  // Live transcript UI
+  // --------------------------------
+
+  const [currentQuestion, setCurrentQuestion] =
+    useState("");
+
+  const [userTranscript, setUserTranscript] =
+    useState("");
+
+  const [lastAnswer, setLastAnswer] =
+    useState("");
+
+  const [aiSpeaking, setAiSpeaking] =
+    useState(false);
+
+  const [userSpeaking, setUserSpeaking] =
+    useState(false);
+
+  // --------------------------------
+  // Timer
+  // --------------------------------
+
+  const [seconds, setSeconds] = useState(0);
+
+  // --------------------------------
   // Refs
   // --------------------------------
 
+  const questionCountRef = useRef(0);
+
+  const messageSaveChainRef =
+    useRef<Promise<unknown>>(Promise.resolve());
+
   const geminiRef =
-    useRef<ReturnType<typeof connectToGemini> | null>(null);
+    useRef<ReturnType<typeof connectToGemini> | null>(
+      null,
+    );
 
   const audioStreamerRef =
     useRef<AudioStreamer | null>(null);
@@ -79,7 +110,6 @@ const InterviewPage = () => {
   const audioPlayerRef =
     useRef<AudioPlayer | null>(null);
 
-  // Prevent completion twice
   const completionStartedRef =
     useRef(false);
 
@@ -87,20 +117,39 @@ const InterviewPage = () => {
   // Transcript buffers
   // --------------------------------
 
-  const inputTranscriptRef =
-    useRef("");
-
-  const outputTranscriptRef =
-    useRef("");
+  const inputTranscriptRef = useRef("");
+  const outputTranscriptRef = useRef("");
 
   // First Gemini response is greeting
-  const firstAiResponseRef =
-    useRef(true);
+  const firstAiResponseRef = useRef(true);
 
-  // We only want to accept answers when
-  // Gemini has asked a question.
-  const waitingForAnswerRef =
-    useRef(false);
+  // Only accept answers when Gemini
+  // has asked a question.
+  const waitingForAnswerRef = useRef(false);
+
+  // --------------------------------
+  // Timer
+  // --------------------------------
+
+  useEffect(() => {
+    if (!interviewStarted) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setSeconds((current) => current + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [interviewStarted]);
+
+  const minutes = String(
+    Math.floor(seconds / 60),
+  ).padStart(2, "0");
+
+  const remainingSeconds = String(
+    seconds % 60,
+  ).padStart(2, "0");
 
   // --------------------------------
   // Load interview
@@ -116,31 +165,33 @@ const InterviewPage = () => {
         }
 
         const response = await axios.get(
-          `http://localhost:3000/interview/${interviewId}`
+          `http://localhost:3000/interview/${interviewId}`,
         );
 
         const data = response.data;
 
-        console.log(
-          "📄 Interview data:",
-          data
-        );
+        console.log("📄 Interview data:", data);
 
         setCandidateProfile(
-          data.candidateProfile
+          data.candidateProfile,
         );
 
-        const restoredQuestionCount = data.questionCount || 0;
+        const restoredQuestionCount =
+          data.questionCount || 0;
 
-        questionCountRef.current = restoredQuestionCount;
-        setQuestionCount(restoredQuestionCount);
+        questionCountRef.current =
+          restoredQuestionCount;
 
-        // Already completed
+        setQuestionCount(
+          restoredQuestionCount,
+        );
+
         if (data.status === "completed") {
           navigate(
             `/result/${interviewId}`,
-            { replace: true }
+            { replace: true },
           );
+
           return;
         }
 
@@ -148,11 +199,11 @@ const InterviewPage = () => {
       } catch (error) {
         console.error(
           "Failed to load interview:",
-          error
+          error,
         );
 
         setError(
-          "Failed to load interview data."
+          "Failed to load interview data.",
         );
 
         setLoading(false);
@@ -172,7 +223,7 @@ const InterviewPage = () => {
       | "question"
       | "answer"
       | "greeting",
-    content: string
+    content: string,
   ) => {
     if (!interviewId) {
       return null;
@@ -184,47 +235,56 @@ const InterviewPage = () => {
       return null;
     }
 
-    const saveOperation = messageSaveChainRef.current.then(async () => {
-      try {
-        console.log(
-          `💾 Saving ${role}/${type}:`,
-          cleanContent
-        );
+    const saveOperation =
+      messageSaveChainRef.current.then(
+        async () => {
+          try {
+            console.log(
+              `💾 Saving ${role}/${type}:`,
+              cleanContent,
+            );
 
-        const response = await axios.post(
-          `http://localhost:3000/interview/${interviewId}/messages`,
-          {
-            role,
-            type,
-            content: cleanContent,
+            const response =
+              await axios.post(
+                `http://localhost:3000/interview/${interviewId}/messages`,
+                {
+                  role,
+                  type,
+                  content: cleanContent,
+                },
+              );
+
+            console.log(
+              "✅ Message saved:",
+              response.data,
+            );
+
+            if (
+              typeof response.data
+                .questionCount === "number"
+            ) {
+              questionCountRef.current =
+                response.data.questionCount;
+
+              setQuestionCount(
+                response.data.questionCount,
+              );
+            }
+
+            return response.data;
+          } catch (error) {
+            console.error(
+              `❌ Failed to save ${role}/${type}:`,
+              error,
+            );
+
+            return null;
           }
-        );
+        },
+      );
 
-        console.log(
-          "✅ Message saved:",
-          response.data
-        );
-
-        if (
-          typeof response.data.questionCount ===
-          "number"
-        ) {
-          questionCountRef.current = response.data.questionCount;
-          setQuestionCount(response.data.questionCount);
-        }
-
-        return response.data;
-      } catch (error) {
-        console.error(
-          `❌ Failed to save ${role}/${type}:`,
-          error
-        );
-
-        return null;
-      }
-    });
-
-    messageSaveChainRef.current = saveOperation.catch(() => undefined);
+    messageSaveChainRef.current =
+      saveOperation.catch(() => undefined);
 
     return saveOperation;
   };
@@ -249,29 +309,18 @@ const InterviewPage = () => {
       await messageSaveChainRef.current;
 
       console.log(
-        "🏁 Finishing interview..."
+        "🏁 Finishing interview...",
       );
 
-      // --------------------------------
       // Stop microphone
-      // --------------------------------
-
       audioStreamerRef.current?.stop();
-
       audioStreamerRef.current = null;
 
-      // --------------------------------
       // Stop audio player
-      // --------------------------------
-
       audioPlayerRef.current?.destroy();
-
       audioPlayerRef.current = null;
 
-      // --------------------------------
       // Close Gemini WebSocket
-      // --------------------------------
-
       const websocket =
         geminiRef.current?.websocket;
 
@@ -288,49 +337,36 @@ const InterviewPage = () => {
       setConnected(false);
       setMicActive(false);
 
-      // --------------------------------
       // Ask backend for latest status
-      // --------------------------------
-
-      const response = await axios.get(
-        `http://localhost:3000/interview/${interviewId}`
-      );
+      const response =
+        await axios.get(
+          `http://localhost:3000/interview/${interviewId}`,
+        );
 
       console.log(
         "Final interview status:",
-        response.data.status
+        response.data.status,
       );
 
-      // --------------------------------
       // If backend has not completed it,
       // manually complete it.
-      // --------------------------------
-
       if (
         response.data.status !==
         "completed"
       ) {
         await axios.post(
-          `http://localhost:3000/interview/${interviewId}/complete`
+          `http://localhost:3000/interview/${interviewId}/complete`,
         );
       }
 
-      // --------------------------------
-      // Go to result page
-      // --------------------------------
-
-      console.log(
-        "➡️ Redirecting to result..."
-      );
-
       navigate(
         `/result/${interviewId}`,
-        { replace: true }
+        { replace: true },
       );
     } catch (error) {
       console.error(
         "Failed to complete interview:",
-        error
+        error,
       );
 
       completionStartedRef.current =
@@ -339,7 +375,7 @@ const InterviewPage = () => {
       setCompleting(false);
 
       setError(
-        "Failed to complete interview."
+        "Failed to complete interview.",
       );
     }
   };
@@ -349,7 +385,7 @@ const InterviewPage = () => {
   // --------------------------------
 
   const handleGeminiMessage = async (
-    event: MessageEvent
+    event: MessageEvent,
   ) => {
     try {
       const text =
@@ -357,12 +393,11 @@ const InterviewPage = () => {
           ? event.data
           : await event.data.text();
 
-      const response =
-        JSON.parse(text);
+      const response = JSON.parse(text);
 
       console.log(
         "📩 Gemini response:",
-        response
+        response,
       );
 
       const serverContent =
@@ -390,8 +425,10 @@ const InterviewPage = () => {
       if (parts) {
         for (const part of parts) {
           if (part.inlineData?.data) {
+            setAiSpeaking(true);
+
             await audioPlayerRef.current?.play(
-              part.inlineData.data
+              part.inlineData.data,
             );
           }
         }
@@ -411,9 +448,15 @@ const InterviewPage = () => {
         inputTranscriptRef.current +=
           inputTranscript;
 
+        setUserTranscript(
+          inputTranscriptRef.current,
+        );
+
+        setUserSpeaking(true);
+
         console.log(
           "👤 User transcript chunk:",
-          inputTranscript
+          inputTranscript,
         );
       }
 
@@ -431,9 +474,15 @@ const InterviewPage = () => {
         outputTranscriptRef.current +=
           outputTranscript;
 
+        setCurrentQuestion(
+          outputTranscriptRef.current,
+        );
+
+        setAiSpeaking(true);
+
         console.log(
           "🤖 Gemini transcript chunk:",
-          outputTranscript
+          outputTranscript,
         );
       }
 
@@ -451,16 +500,16 @@ const InterviewPage = () => {
 
         inputTranscriptRef.current = "";
 
+        setUserSpeaking(false);
+
         if (finalInput) {
           console.log(
             "👤 FINAL USER ANSWER:",
-            finalInput
+            finalInput,
           );
 
-          // --------------------------------
-          // Only accept candidate speech as
-          // an answer when AI asked a question.
-          // --------------------------------
+          setLastAnswer(finalInput);
+          setUserTranscript("");
 
           if (
             waitingForAnswerRef.current
@@ -468,36 +517,31 @@ const InterviewPage = () => {
             waitingForAnswerRef.current =
               false;
 
-            const savedAnswer = await saveMessage(
-              "user",
-              "answer",
-              finalInput
-            );
+            const savedAnswer =
+              await saveMessage(
+                "user",
+                "answer",
+                finalInput,
+              );
 
-            if (savedAnswer?.status === "completed") {
+            if (
+              savedAnswer?.status ===
+              "completed"
+            ) {
               await finishAndNavigate();
               return;
             }
-
-            // --------------------------------
-            // If question 10 was answered,
-            // finish automatically.
-            // --------------------------------
 
             if (
               questionCountRef.current >=
               MAX_QUESTIONS
             ) {
               console.log(
-                "🎯 Final answer received."
+                "🎯 Final answer received.",
               );
 
               await finishAndNavigate();
             }
-          } else {
-            console.log(
-              "⚠️ User spoke while AI was not waiting for an answer."
-            );
           }
         }
       }
@@ -516,16 +560,15 @@ const InterviewPage = () => {
 
         outputTranscriptRef.current = "";
 
+        setAiSpeaking(false);
+
         if (finalOutput) {
           console.log(
             "🤖 FINAL GEMINI:",
-            finalOutput
+            finalOutput,
           );
 
-          // --------------------------------
-          // First AI response = greeting
-          // --------------------------------
-
+          // First response = greeting
           if (
             firstAiResponseRef.current
           ) {
@@ -535,102 +578,67 @@ const InterviewPage = () => {
             await saveMessage(
               "ai",
               "greeting",
-              finalOutput
-            );
-
-            console.log(
-              "👋 Greeting saved."
+              finalOutput,
             );
 
             return;
           }
 
-          // --------------------------------
-          // If already reached 10 questions,
-          // don't save another AI question.
-          // --------------------------------
-
+          // Maximum questions reached
           if (
             questionCountRef.current >=
             MAX_QUESTIONS
           ) {
-            console.log(
-              "🛑 Maximum questions reached."
-            );
-
             return;
           }
 
-          // --------------------------------
           // Detect closing message
-          // --------------------------------
-
           const lower =
             finalOutput.toLowerCase();
 
           const isClosing =
             lower.includes(
-              "that concludes"
+              "that concludes",
             ) ||
             lower.includes(
-              "interview is complete"
+              "interview is complete",
             ) ||
             lower.includes(
-              "thank you for completing"
+              "thank you for completing",
             ) ||
             lower.includes(
-              "thanks for completing"
+              "thanks for completing",
             ) ||
-            lower.includes(
-              "we're done"
-            ) ||
-            lower.includes(
-              "goodbye"
-            );
+            lower.includes("we're done") ||
+            lower.includes("goodbye");
 
           if (isClosing) {
             await saveMessage(
               "ai",
               "greeting",
-              finalOutput
-            );
-
-            console.log(
-              "👋 Closing message saved."
+              finalOutput,
             );
 
             return;
           }
 
-          // --------------------------------
-          // Every normal AI turn after greeting
-          // is treated as an interview question.
-          //
-          // IMPORTANT:
-          // Your Gemini system instruction should
-          // tell Gemini to ask ONE question per turn.
-          // --------------------------------
-
+          // Normal AI question
           if (
             !waitingForAnswerRef.current
           ) {
             waitingForAnswerRef.current =
               true;
 
+            setCurrentQuestion(
+              finalOutput,
+            );
+
+            setLastAnswer("");
+
             await saveMessage(
               "ai",
               "question",
-              finalOutput
-            );
-
-            console.log(
-              `❓ Question ${
-                questionCountRef.current + 1
-              } saved.`
-            );
-          } else {
-            console.log(
-              "⚠️ Gemini generated another response while waiting for answer."
+              finalOutput,
             );
           }
         }
@@ -643,16 +651,14 @@ const InterviewPage = () => {
       if (
         serverContent.interrupted
       ) {
-        console.log(
-          "🛑 Gemini interrupted"
-        );
+        setAiSpeaking(false);
 
         audioPlayerRef.current?.interrupt();
       }
     } catch (error) {
       console.error(
         "❌ Error processing Gemini message:",
-        error
+        error,
       );
     }
   };
@@ -665,235 +671,226 @@ const InterviewPage = () => {
     try {
       setLoading(true);
       setError("");
-  
+
       if (!interviewId) {
-        setError("Interview ID is missing.");
+        setError(
+          "Interview ID is missing.",
+        );
+
         setLoading(false);
         return;
       }
-  
-      // ================================================
-      // 1. GET INTERVIEW DATA
-      // ================================================
-  
-      const interviewResponse = await axios.get(
-        `http://localhost:3000/interview/${interviewId}`
-      );
-  
+
+      // Get interview data
+      const interviewResponse =
+        await axios.get(
+          `http://localhost:3000/interview/${interviewId}`,
+        );
+
       const {
         candidateProfile,
         githubRepositories,
         status,
-        questionCount: existingQuestionCount,
+        questionCount:
+          existingQuestionCount,
       } = interviewResponse.data;
-  
-      console.log("👤 Candidate:", candidateProfile);
-      console.log("🐙 GitHub:", githubRepositories);
-      console.log("❓ Existing questions:", existingQuestionCount);
-  
-      // ================================================
-      // 2. CHECK IF ALREADY COMPLETED
-      // ================================================
-  
+
       if (status === "completed") {
-        navigate(`/result/${interviewId}`, {
-          replace: true,
-        });
+        navigate(
+          `/result/${interviewId}`,
+          { replace: true },
+        );
+
         return;
       }
-  
-      // ================================================
-      // 3. RESTORE QUESTION COUNT
-      // ================================================
-  
-      questionCountRef.current = existingQuestionCount || 0;
-      setQuestionCount(questionCountRef.current);
-  
-      // ================================================
-      // 4. START BACKEND INTERVIEW
-      // ================================================
-  
+
+      // Restore question count
+      questionCountRef.current =
+        existingQuestionCount || 0;
+
+      setQuestionCount(
+        questionCountRef.current,
+      );
+
+      // Start backend interview
       await axios.patch(
-        `http://localhost:3000/interview/${interviewId}/start`
+        `http://localhost:3000/interview/${interviewId}/start`,
       );
-  
-      console.log("✅ Backend interview started");
-  
-      // ================================================
-      // 5. GET GEMINI EPHEMERAL TOKEN
-      // ================================================
-  
-      const tokenResponse = await axios.get(
-        "http://localhost:3000/live-token"
-      );
-  
+
+      // Get Gemini token
+      const tokenResponse =
+        await axios.get(
+          "http://localhost:3000/live-token",
+        );
+
       if (!tokenResponse.data?.token) {
-        throw new Error("Gemini token was not received");
+        throw new Error(
+          "Gemini token was not received",
+        );
       }
-  
-      const ephemeralToken = tokenResponse.data.token;
-  
-      console.log("🔑 Ephemeral token received");
-  
-      // ================================================
-      // 6. INITIALIZE AUDIO PLAYER
-      // ================================================
-  
-      const audioPlayer = new AudioPlayer();
-  
-      audioPlayerRef.current = audioPlayer;
-  
+
+      const ephemeralToken =
+        tokenResponse.data.token;
+
+      // Initialize audio player
+      const audioPlayer =
+        new AudioPlayer();
+
+      audioPlayerRef.current =
+        audioPlayer;
+
       await audioPlayer.init();
-  
-      console.log("🔊 Audio player initialized");
-  
-      // ================================================
-      // 7. RESET INTERVIEW REFS
-      // ================================================
-  
+
+      // Reset interview state
       inputTranscriptRef.current = "";
       outputTranscriptRef.current = "";
-  
+
       firstAiResponseRef.current = true;
       waitingForAnswerRef.current = false;
       completionStartedRef.current = false;
-  
-      // ================================================
-      // 8. CONNECT TO GEMINI
-      // ================================================
-  
-      const gemini = connectToGemini(
-        ephemeralToken,
-        candidateProfile,
-        githubRepositories,
-        handleGeminiMessage
-      );
-  
+
+      setCurrentQuestion("");
+      setUserTranscript("");
+      setLastAnswer("");
+      setSeconds(0);
+
+      // Connect Gemini
+      const gemini =
+        connectToGemini(
+          ephemeralToken,
+          candidateProfile,
+          githubRepositories,
+          handleGeminiMessage,
+        );
+
       geminiRef.current = gemini;
-  
-      console.log("🔌 Gemini connection created");
-  
-      // ================================================
-      // 9. WAIT FOR GEMINI WEBSOCKET TO OPEN
-      // ================================================
-  
-      await new Promise<void>((resolve, reject) => {
-        const websocket = gemini.websocket;
-  
-        if (websocket.readyState === WebSocket.OPEN) {
-          resolve();
-          return;
-        }
-  
-        const timeout = setTimeout(() => {
-          reject(
-            new Error("Gemini WebSocket connection timeout")
-          );
-        }, 10000);
-  
-        const originalOpen = websocket.onopen;
-        const originalClose = websocket.onclose;
-  
-        websocket.onopen = (event) => {
-          if (originalOpen) {
-            originalOpen.call(websocket, event);
+
+      // Wait for WebSocket
+      await new Promise<void>(
+        (resolve, reject) => {
+          const websocket =
+            gemini.websocket;
+
+          if (
+            websocket.readyState ===
+            WebSocket.OPEN
+          ) {
+            resolve();
+            return;
           }
-  
-          clearTimeout(timeout);
-  
-          console.log(
-            "✅ Gemini WebSocket is ready from Interview.tsx"
-          );
-  
-          resolve();
-        };
-  
-        websocket.onclose = (event) => {
-          if (originalClose) {
-            originalClose.call(websocket, event);
-          }
-  
-          clearTimeout(timeout);
-  
-          reject(
-            new Error(
-              `Gemini WebSocket closed before interview started. Code: ${event.code}`
-            )
-          );
-        };
-      });
-  
-      // ================================================
-      // 10. SEND CANDIDATE CONTEXT
-      // ================================================
-  
+
+          const timeout = setTimeout(() => {
+            reject(
+              new Error(
+                "Gemini WebSocket connection timeout",
+              ),
+            );
+          }, 10000);
+
+          const originalOpen =
+            websocket.onopen;
+
+          const originalClose =
+            websocket.onclose;
+
+          websocket.onopen = (event) => {
+            if (originalOpen) {
+              originalOpen.call(
+                websocket,
+                event,
+              );
+            }
+
+            clearTimeout(timeout);
+
+            console.log(
+              "✅ Gemini WebSocket ready",
+            );
+
+            resolve();
+          };
+
+          websocket.onclose = (event) => {
+            if (originalClose) {
+              originalClose.call(
+                websocket,
+                event,
+              );
+            }
+
+            clearTimeout(timeout);
+
+            reject(
+              new Error(
+                `Gemini WebSocket closed before interview started. Code: ${event.code}`,
+              ),
+            );
+          };
+        },
+      );
+
+      // Send candidate context
       gemini.sendCandidateContext();
-  
-      console.log("📄 Candidate context sent to Gemini");
-  
-      // ================================================
-      // 11. START MICROPHONE
-      // ================================================
-  
-      const audioStreamer = new AudioStreamer(gemini);
-  
-      audioStreamerRef.current = audioStreamer;
-  
+
+      // Start microphone
+      const audioStreamer =
+        new AudioStreamer(gemini);
+
+      audioStreamerRef.current =
+        audioStreamer;
+
       await audioStreamer.start();
-  
-      console.log("🎤 Microphone started");
-  
+
       setMicActive(true);
       setConnected(true);
       setInterviewStarted(true);
       setLoading(false);
-  
-      console.log("🚀 LIVE INTERVIEW STARTED");
-  
+
+      console.log(
+        "🚀 LIVE INTERVIEW STARTED",
+      );
     } catch (error) {
       console.error(
         "❌ Failed to start interview:",
-        error
+        error,
       );
-  
-      // ================================================
-      // CLEANUP IF STARTUP FAILS
-      // ================================================
-  
+
+      // Cleanup
       audioStreamerRef.current?.stop();
       audioStreamerRef.current = null;
-  
+
       audioPlayerRef.current?.destroy();
       audioPlayerRef.current = null;
-  
+
       const websocket =
         geminiRef.current?.websocket;
-  
+
       if (
         websocket &&
-        websocket.readyState === WebSocket.OPEN
+        websocket.readyState ===
+          WebSocket.OPEN
       ) {
         websocket.close();
       }
-  
+
       geminiRef.current = null;
-  
+
       setConnected(false);
       setMicActive(false);
       setInterviewStarted(false);
-  
+
       setError(
         error instanceof Error
           ? error.message
-          : "Failed to start interview. Please try again."
+          : "Failed to start interview. Please try again.",
       );
-  
+
       setLoading(false);
     }
   };
 
   // --------------------------------
-  // Stop interview manually
+  // Stop interview
   // --------------------------------
 
   const stopInterview = async () => {
@@ -902,7 +899,7 @@ const InterviewPage = () => {
     }
 
     console.log(
-      "🛑 User clicked End Interview"
+      "🛑 User clicked End Interview",
     );
 
     await finishAndNavigate();
@@ -915,11 +912,9 @@ const InterviewPage = () => {
   useEffect(() => {
     return () => {
       audioStreamerRef.current?.stop();
-
       audioStreamerRef.current = null;
 
       audioPlayerRef.current?.destroy();
-
       audioPlayerRef.current = null;
 
       const websocket =
@@ -946,12 +941,12 @@ const InterviewPage = () => {
     !interviewStarted
   ) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
+      <main className="flex min-h-screen items-center justify-center bg-background px-6">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-violet-400" />
+          <Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" />
 
-          <p className="text-slate-300">
-            Loading interview...
+          <p className="mt-4 text-sm text-muted-foreground">
+            Preparing your interview...
           </p>
         </div>
       </main>
@@ -959,7 +954,7 @@ const InterviewPage = () => {
   }
 
   // --------------------------------
-  // Error
+  // Initial error
   // --------------------------------
 
   if (
@@ -967,17 +962,17 @@ const InterviewPage = () => {
     !interviewStarted
   ) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">
+      <main className="flex min-h-screen items-center justify-center bg-background px-6">
+        <div className="max-w-md text-center">
+          <p className="text-sm text-destructive">
             {error}
           </p>
 
           <Button
             onClick={() =>
-              navigate("/")
+              navigate("/dashboard")
             }
-            className="bg-violet-600 hover:bg-violet-500"
+            className="mt-5"
           >
             Go Back
           </Button>
@@ -991,282 +986,423 @@ const InterviewPage = () => {
   // --------------------------------
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6 py-12 relative overflow-hidden">
+    <div className="flex min-h-screen flex-col bg-background">
+      {/* =================================
+          HEADER
+      ================================== */}
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <LogoMark className="h-6 w-6" />
 
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl" />
-
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl" />
-
-      <div className="relative w-full max-w-4xl">
-
-        {/* Header */}
-
-        <div className="text-center mb-8">
-
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-2">
-
-            <span className="text-violet-400">
-              Live Interview
-            </span>
-
-          </h1>
-
-          <p className="text-slate-400">
-            {candidateProfile?.name
-              ? `Welcome, ${candidateProfile.name}`
-              : "AI Technical Interview"}
-          </p>
-
+          <span className="hidden text-[13px] font-medium sm:inline">
+            AI Technical Interview
+          </span>
         </div>
 
-        <Card className="bg-white/[0.04] border-white/10 backdrop-blur-xl shadow-2xl">
+        <div className="flex items-center gap-3 font-mono text-[10px] text-muted-foreground sm:gap-5">
+          {interviewStarted && (
+            <>
+              <span>
+                Q{" "}
+                {String(
+                  Math.min(
+                    questionCount + 1,
+                    MAX_QUESTIONS,
+                  ),
+                ).padStart(2, "0")}{" "}
+                / {MAX_QUESTIONS}
+              </span>
 
-          <CardContent className="p-6">
+              <span className="text-foreground">
+                {minutes}:{remainingSeconds}
+              </span>
+            </>
+          )}
 
-            <div className="space-y-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={
+              interviewStarted
+                ? stopInterview
+                : () =>
+                    navigate("/dashboard")
+            }
+            disabled={completing}
+            className="h-8 px-2.5 text-xs"
+          >
+            {interviewStarted
+              ? "Exit"
+              : "Back"}
+          </Button>
+        </div>
+      </header>
 
-              {/* Candidate */}
+      {/* =================================
+          MAIN
+      ================================== */}
+      <main className="relative flex flex-1 items-center justify-center overflow-hidden px-5 py-10 sm:px-6">
+        {/* Very subtle background accents */}
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.025] blur-3xl" />
 
-              {candidateProfile && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                  <div className="p-4 rounded-lg bg-white/[0.02] border border-white/10">
-
-                    <p className="text-sm text-slate-400 mb-1">
-                      Candidate
-                    </p>
-
-                    <p className="text-lg font-semibold text-violet-400">
-                      {candidateProfile.name ||
-                        "Unknown"}
-                    </p>
-
-                  </div>
-
-                  <div className="p-4 rounded-lg bg-white/[0.02] border border-white/10">
-
-                    <p className="text-sm text-slate-400 mb-1">
-                      GitHub
-                    </p>
-
-                    <p className="text-lg font-semibold text-violet-400">
-                      @
-                      {candidateProfile.github ||
-                        "N/A"}
-                    </p>
-
-                  </div>
-
-                </div>
-              )}
-
-              {/* Connection */}
-
-              <div className="grid grid-cols-2 gap-4">
-
-                <div className="p-4 rounded-lg bg-white/[0.02] border border-white/10">
-
-                  <div className="flex items-center gap-2 mb-2">
-
-                    {connected ? (
-                      <>
-                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-
-                        <p className="text-sm font-medium text-green-400">
-                          Connected
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-3 h-3 bg-slate-500 rounded-full" />
-
-                        <p className="text-sm font-medium text-slate-400">
-                          {interviewStarted
-                            ? "Connecting..."
-                            : "Not Connected"}
-                        </p>
-                      </>
-                    )}
-
-                  </div>
-
-                  <p className="text-xs text-slate-500">
-                    Gemini WebSocket
-                  </p>
-
-                </div>
-
-                {/* Microphone */}
-
-                <div className="p-4 rounded-lg bg-white/[0.02] border border-white/10">
-
-                  <div className="flex items-center gap-2 mb-2">
-
-                    {micActive ? (
-                      <>
-                        <Mic className="w-4 h-4 text-red-400 animate-pulse" />
-
-                        <p className="text-sm font-medium text-red-400">
-                          Recording
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <MicOff className="w-4 h-4 text-slate-500" />
-
-                        <p className="text-sm font-medium text-slate-400">
-                          {interviewStarted
-                            ? "Processing..."
-                            : "Inactive"}
-                        </p>
-                      </>
-                    )}
-
-                  </div>
-
-                  <p className="text-xs text-slate-500">
-                    Microphone Input
-                  </p>
-
-                </div>
-
+        <div className="relative w-full max-w-4xl">
+          {!interviewStarted ? (
+            /* =================================
+               PRE-INTERVIEW
+            ================================== */
+            <section className="mx-auto max-w-2xl text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-card">
+                <Sparkles className="h-5 w-5 text-primary" />
               </div>
 
-              {/* Question Counter */}
-
-              {interviewStarted && (
-                <div className="p-4 rounded-lg bg-gradient-to-r from-violet-500/20 to-blue-500/20 border border-violet-500/30">
-
-                  <div className="flex items-center gap-3">
-
-                    <Brain className="w-5 h-5 text-violet-400" />
-
-                    <div>
-
-                      <p className="text-sm text-slate-300">
-                        Interview Progress
-                      </p>
-
-                      <p className="text-2xl font-bold text-violet-400">
-                        {questionCount} /{" "}
-                        {MAX_QUESTIONS} Questions
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                </div>
-              )}
-
-              {/* Error */}
-
-              {error && (
-                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-
-                  <p className="text-sm text-red-400">
-                    {error}
-                  </p>
-
-                </div>
-              )}
-
-              {/* Audio status */}
-
-              {connected && micActive && (
-                <div className="p-4 rounded-lg bg-white/[0.02] border border-white/10">
-
-                  <div className="flex items-center gap-2 mb-2">
-
-                    <Volume2 className="w-4 h-4 text-cyan-400 animate-pulse" />
-
-                    <MessageCircle className="w-4 h-4 text-slate-400" />
-
-                  </div>
-
-                  <p className="text-sm text-slate-300">
-                    Listening to your response...
-                  </p>
-
-                </div>
-              )}
-
-              {/* Buttons */}
-
-              <div className="flex gap-3 pt-4">
-
-                {!interviewStarted ? (
-
-                  <Button
-                    onClick={startInterview}
-                    disabled={loading}
-                    className="flex-1 h-12 bg-violet-600 hover:bg-violet-500 text-white font-medium flex items-center justify-center gap-2"
-                  >
-
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-
-                        Starting...
-                      </>
-                    ) : (
-                      <>
-                        <MessageCircle className="w-5 h-5" />
-
-                        Start Interview
-                      </>
-                    )}
-
-                  </Button>
-
-                ) : (
-
-                  <Button
-                    onClick={stopInterview}
-                    disabled={
-                      loading ||
-                      completing
-                    }
-                    className="flex-1 h-12 bg-red-600 hover:bg-red-500 text-white font-medium flex items-center justify-center gap-2"
-                  >
-
-                    {completing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-
-                        Completing...
-                      </>
-                    ) : (
-                      <>
-                        <LogOut className="w-5 h-5" />
-
-                        End Interview
-                      </>
-                    )}
-
-                  </Button>
-
-                )}
-
-              </div>
-
-              <p className="text-xs text-slate-500 text-center pt-4">
-
-                Make sure your microphone is enabled and
-                speaker volume is at a comfortable level.
-
+              <p className="label-eyebrow mt-8">
+                AI Technical Interview
               </p>
 
-            </div>
+              <h1 className="mt-4 text-3xl font-semibold tracking-[-0.035em] sm:text-[42px]">
+                Ready when you are.
+              </h1>
 
-          </CardContent>
+              <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
+                Your GitHub profile and resume will
+                be used to personalize the interview.
+                Answer naturally by voice while the
+                AI interviewer guides the conversation.
+              </p>
 
-        </Card>
+              {/* Interview details */}
+              <div className="mx-auto mt-9 grid max-w-xl grid-cols-1 overflow-hidden rounded-xl border border-border bg-card text-left sm:grid-cols-3">
+                <div className="border-b border-border p-4 sm:border-b-0 sm:border-r">
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                    Candidate
+                  </p>
 
-      </div>
+                  <p className="mt-2 truncate text-[13px] font-medium">
+                    {candidateProfile?.name ||
+                      "Candidate"}
+                  </p>
+                </div>
 
-    </main>
+                <div className="border-b border-border p-4 sm:border-b-0 sm:border-r">
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                    Interview
+                  </p>
+
+                  <p className="mt-2 text-[13px] font-medium">
+                    Voice
+                  </p>
+                </div>
+
+                <div className="p-4">
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                    Questions
+                  </p>
+
+                  <p className="mt-2 text-[13px] font-medium">
+                    Up to {MAX_QUESTIONS}
+                  </p>
+                </div>
+              </div>
+
+              {error && (
+                <p className="mt-5 text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+
+              {/* Start */}
+              <div className="mt-9 flex justify-center">
+                <Button
+                  onClick={startInterview}
+                  disabled={loading}
+                  size="lg"
+                  className="h-11 min-w-[190px] gap-2 px-5"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Preparing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Start Interview
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-mono text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Mic className="h-3 w-3" />
+                  Voice interview
+                </span>
+
+                <span>•</span>
+
+                <span>AI Powered</span>
+
+                <span>•</span>
+
+                <span>
+                  Personalized questions
+                </span>
+              </div>
+            </section>
+          ) : (
+            /* =================================
+               LIVE INTERVIEW
+            ================================== */
+            <section className="mx-auto max-w-3xl">
+              {/* Status */}
+              <div className="flex justify-center">
+                <div
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full border px-3 py-1",
+                    aiSpeaking
+                      ? "border-primary/20 bg-primary/10"
+                      : userSpeaking
+                        ? "border-primary/20 bg-primary/10"
+                        : "border-border bg-card",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      aiSpeaking ||
+                        userSpeaking ||
+                        connected
+                        ? "bg-primary"
+                        : "bg-muted-foreground",
+                      (aiSpeaking ||
+                        userSpeaking) &&
+                        "animate-pulse",
+                    )}
+                  />
+
+                  <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+                    {aiSpeaking
+                      ? "AI Speaking"
+                      : userSpeaking
+                        ? "Listening"
+                        : connected
+                          ? "Live"
+                          : "Connecting"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Conversation area */}
+              <div className="mt-10">
+                {/* AI */}
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+
+                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      AI Interviewer
+                    </span>
+                  </div>
+
+                  <div className="mx-auto mt-7 max-w-3xl">
+                    {currentQuestion ? (
+                      <p
+                        className={cn(
+                          "text-2xl font-medium leading-[1.35] tracking-[-0.025em] sm:text-[34px]",
+                          aiSpeaking &&
+                            "animate-in fade-in duration-300",
+                        )}
+                      >
+                        {currentQuestion}
+                      </p>
+                    ) : (
+                      <div className="flex min-h-[130px] items-center justify-center">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+
+                          <span>
+                            Waiting for the interviewer...
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Waveform */}
+                <div className="mt-10 flex min-h-[48px] items-center justify-center">
+                  <Waveform
+                    bars={36}
+                    active={
+                      aiSpeaking ||
+                      micActive
+                    }
+                  />
+                </div>
+
+                {/* State hint */}
+                <div className="mt-5 flex justify-center">
+                  <div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+                    {aiSpeaking ? (
+                      <>
+                        <Volume2 className="h-3.5 w-3.5 animate-pulse" />
+                        Speaking
+                      </>
+                    ) : userSpeaking ? (
+                      <>
+                        <Mic className="h-3.5 w-3.5 text-primary" />
+                        Listening to your answer
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="h-3.5 w-3.5" />
+                        Your microphone is active
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Candidate transcript */}
+                {(userTranscript ||
+                  lastAnswer) && (
+                  <div className="mx-auto mt-8 max-w-2xl border-t border-border pt-5 text-center">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+                      Your response
+                    </p>
+
+                    <p className="mt-3 text-sm leading-6 text-foreground/80">
+                      {userTranscript ||
+                        lastAnswer}
+                    </p>
+
+                    {userSpeaking && (
+                      <div className="mt-3 flex items-center justify-center gap-1.5">
+                        <span className="h-1 w-1 animate-pulse rounded-full bg-primary" />
+                        <span className="font-mono text-[9px] text-primary">
+                          Listening...
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Error */}
+                {error && (
+                  <p className="mt-6 text-center text-sm text-destructive">
+                    {error}
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
+        </div>
+      </main>
+
+      {/* =================================
+          FOOTER / CONTROLS
+      ================================== */}
+      <footer className="shrink-0 border-t border-border">
+        <div className="mx-auto flex min-h-[68px] max-w-5xl items-center justify-between gap-4 px-5 py-3 sm:px-6">
+          {!interviewStarted ? (
+            <>
+              <div className="hidden items-center gap-2 text-muted-foreground sm:flex">
+                <Mic className="h-3.5 w-3.5" />
+
+                <span className="font-mono text-[10px]">
+                  Microphone access required
+                </span>
+              </div>
+
+              <div className="ml-auto flex items-center gap-4 font-mono text-[10px] text-muted-foreground">
+                <span>
+                  Voice
+                </span>
+
+                <span className="h-1 w-1 rounded-full bg-border" />
+
+                <span>
+                  {MAX_QUESTIONS} questions max
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Microphone */}
+              <div className="flex min-w-0 items-center gap-3">
+                <div
+                  className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-md",
+                    micActive
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-muted-foreground",
+                  )}
+                >
+                  {micActive ? (
+                    <Mic className="h-4 w-4" />
+                  ) : (
+                    <MicOff className="h-4 w-4" />
+                  )}
+                </div>
+
+                <div className="hidden min-w-0 sm:block">
+                  <p className="text-[11px] font-medium">
+                    {micActive
+                      ? "Microphone active"
+                      : "Microphone inactive"}
+                  </p>
+
+                  <p className="font-mono text-[9px] text-muted-foreground">
+                    {connected
+                      ? "Live connection"
+                      : "Connecting..."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Session stats */}
+              <div className="flex items-center gap-4 font-mono text-[10px] text-muted-foreground">
+                <span>
+                  {questionCount}/
+                  {MAX_QUESTIONS}
+                </span>
+
+                <span className="hidden h-1 w-1 rounded-full bg-border sm:block" />
+
+                <span>
+                  {minutes}:{remainingSeconds}
+                </span>
+              </div>
+
+              {/* End */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={stopInterview}
+                disabled={completing}
+                className="shrink-0 gap-2"
+              >
+                {completing ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span className="hidden sm:inline">
+                      Completing...
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <PhoneOff className="h-3.5 w-3.5" />
+                    End Interview
+                  </>
+                )}
+              </Button>
+            </>
+          )}
+        </div>
+      </footer>
+    </div>
   );
 };
 
 export default InterviewPage;
+
