@@ -393,7 +393,32 @@ const InterviewPage = () => {
           ? event.data
           : await event.data.text();
 
-      const response = JSON.parse(text);
+      const response: {
+        serverContent?: {
+          inputTranscription?: {
+            text?: string;
+          };
+          inputAudioTranscription?: {
+            text?: string;
+          };
+          outputTranscription?: {
+            text?: string;
+          };
+          outputAudioTranscription?: {
+            text?: string;
+          };
+          modelTurn?: {
+            parts?: Array<{
+              inlineData?: {
+                data?: string;
+              };
+            }>;
+          };
+          interrupted?: boolean;
+          turnComplete?: boolean;
+          generationComplete?: boolean;
+        };
+      } = JSON.parse(text);
 
       console.log(
         "📩 Gemini response:",
@@ -490,71 +515,61 @@ const InterviewPage = () => {
       // 4. INPUT TRANSCRIPTION FINISHED
       // =================================
 
-      const inputFinished =
-        inputTranscription?.finished ||
-        serverContent.turnComplete;
-
-      if (inputFinished) {
-        const finalInput =
-          inputTranscriptRef.current.trim();
-
-        inputTranscriptRef.current = "";
-
-        setUserSpeaking(false);
-
-        if (finalInput) {
-          console.log(
-            "👤 FINAL USER ANSWER:",
-            finalInput,
-          );
-
-          setLastAnswer(finalInput);
-          setUserTranscript("");
-
-          if (
-            waitingForAnswerRef.current
-          ) {
-            waitingForAnswerRef.current =
-              false;
-
-            const savedAnswer =
-              await saveMessage(
-                "user",
-                "answer",
-                finalInput,
-              );
-
-            if (
-              savedAnswer?.status ===
-              "completed"
-            ) {
-              await finishAndNavigate();
-              return;
-            }
-
-            if (
-              questionCountRef.current >=
-              MAX_QUESTIONS
-            ) {
-              console.log(
-                "🎯 Final answer received.",
-              );
-
-              await finishAndNavigate();
+      // Gemini Live does not expose `finished` on inputTranscription.
+      // Finalize the candidate answer when the current turn completes.
+      if (serverContent.turnComplete) {
+          const finalInput =
+            inputTranscriptRef.current.trim();
+        
+          inputTranscriptRef.current = "";
+        
+          setUserSpeaking(false);
+        
+          if (finalInput) {
+            console.log(
+              "👤 FINAL USER ANSWER:",
+              finalInput
+            );
+        
+            setLastAnswer(finalInput);
+            setUserTranscript("");
+        
+            if (waitingForAnswerRef.current) {
+              waitingForAnswerRef.current = false;
+        
+              const savedAnswer =
+                await saveMessage(
+                  "user",
+                  "answer",
+                  finalInput
+                );
+        
+              if (savedAnswer?.status === "completed") {
+                await finishAndNavigate();
+                return;
+              }
+        
+              if (
+                questionCountRef.current >=
+                MAX_QUESTIONS
+              ) {
+                console.log(
+                  "🎯 Final answer received."
+                );
+        
+                await finishAndNavigate();
+              }
             }
           }
         }
-      }
 
       // =================================
       // 5. OUTPUT TRANSCRIPTION FINISHED
       // =================================
 
-      const outputFinished =
-        outputTranscription?.finished ||
-        serverContent.turnComplete;
-
-      if (outputFinished) {
+      // Gemini Live does not expose `finished` on outputTranscription.
+      // generationComplete indicates that model generation has finished.
+      if (serverContent.generationComplete === true) {
         const finalOutput =
           outputTranscriptRef.current.trim();
 

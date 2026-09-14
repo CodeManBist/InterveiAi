@@ -7,6 +7,7 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import DashboardPage from "./pages/DashboardPage";
 import InterviewsPage from "./pages/InterviewsPage";
+import ProfilePage from "./pages/ProfilePage";
 
 const App = () => {
   return (
@@ -20,6 +21,7 @@ const App = () => {
         <Route path="/new-interview" element={<NewInterviewPage />} />
         <Route path="/interview/:interviewId" element={<InterviewPage />} />
         <Route path="/result/:interviewId" element={<ResultPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
     </BrowserRouter>
   )

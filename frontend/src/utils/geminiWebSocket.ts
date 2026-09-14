@@ -35,6 +35,17 @@ export const connectToGemini = (
           responseModalities: ["AUDIO"],
         },
 
+        realtimeInputConfig: {
+          automaticActivityDetection: {
+            disabled: false,
+            startOfSpeechSensitivity: "START_SENSITIVITY_LOW",
+            endOfSpeechSensitivity: "END_SENSITIVITY_LOW",
+            prefixPaddingMs: 300,
+            silenceDurationMs: 1500,
+          },
+          activityHandling: "START_OF_ACTIVITY_INTERRUPTS",
+        },
+
         systemInstruction: {
           parts: [
             {
