@@ -42,6 +42,12 @@ app.use(
 
 connectDB();
 
+/**
+ * Rejects requests that do not have an authenticated Clerk user.
+ *
+ * Successful requests receive the Clerk user ID in `res.locals.clerkUserId`
+ * before control passes to the next handler.
+ */
 const requireAuth = (
   req: express.Request,
   res: express.Response,
@@ -60,6 +66,12 @@ const requireAuth = (
   next();
 };
 
+/**
+ * Finds the local user associated with the request's Clerk identity.
+ *
+ * @returns The matching user, or `null` when the request has no Clerk user ID
+ * or that identity has not been synchronized locally.
+ */
 const getCurrentUser = async (req: express.Request) => {
   const { userId } = getAuth(req);
 
