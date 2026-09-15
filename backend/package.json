@@ -21,6 +21,7 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
+    "@clerk/express": "^2.1.67",
     "@google/genai": "^2.19.0",
     "axios": "^1.20.0",
     "cors": "^2.8.6",

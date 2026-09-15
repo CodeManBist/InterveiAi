@@ -67,6 +67,12 @@ const githubRepositorySchema = new mongoose.Schema(
 
 const interviewSchema = new mongoose.Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     candidateProfile: {
       name: String,
 

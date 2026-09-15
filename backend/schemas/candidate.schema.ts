@@ -25,6 +25,8 @@ export const candidateProfileSchema = z.object({
 
   summary: z.string(),
 
+  github: z.string().optional(),
+
   skills: z.array(z.string()),
 
   technologies: z.array(z.string()),

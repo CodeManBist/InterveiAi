@@ -1,5 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowUpRight, Plus } from "lucide-react";
+import { useUser } from "@clerk/react";
 
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -27,15 +28,32 @@ const stats = [
 ];
 
 function DashboardPage() {
+  const navigate = useNavigate();
+  const { isLoaded, isSignedIn, user } = useUser();
+
+  if (!isLoaded) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isSignedIn) {
+    navigate("/login");
+  }
+
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-[1200px] px-6 py-10 lg:px-10">
         <PageHeader
-          title="Good morning."
+          title={`Good morning, ${user.firstName || user.username || "there"}.`}
           subtitle="Ready for your next interview?"
           action={
-            <Button className="flex items-center justify-center gap-2 py-5 px-3" asChild>
-              <Link className="flex items-center justify-center gap-2" to="/new-interview">
+            <Button
+              className="flex items-center justify-center gap-2 px-3 py-5"
+              asChild
+            >
+              <Link
+                className="flex items-center justify-center gap-2"
+                to="/new-interview"
+              >
                 <Plus className="h-4 w-4" />
                 New Interview
               </Link>
@@ -43,13 +61,29 @@ function DashboardPage() {
           }
         />
 
+        {/* User */}
+        <div className="mt-6 flex items-center gap-3">
+          <img
+            src={user.imageUrl}
+            alt={user.fullName || "User"}
+            className="h-10 w-10 rounded-full object-cover"
+          />
+
+          <div>
+            <p className="font-medium">
+              {user.fullName || user.username}
+            </p>
+
+            <p className="text-sm text-muted-foreground">
+              {user.primaryEmailAddress?.emailAddress}
+            </p>
+          </div>
+        </div>
+
         {/* Stats */}
         <div className="mt-8 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3">
           {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="bg-card px-5 py-5"
-            >
+            <div key={stat.label} className="bg-card px-5 py-5">
               <p className="label-eyebrow">
                 {stat.label}
               </p>
@@ -102,20 +136,16 @@ function DashboardPage() {
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
-                  {[
-                    "Role",
-                    "Date",
-                    "Score",
-                    "Status",
-                    "",
-                  ].map((heading) => (
-                    <th
-                      key={heading}
-                      className="px-5 py-3 font-mono text-[10px] font-normal tracking-widest text-muted-foreground uppercase"
-                    >
-                      {heading}
-                    </th>
-                  ))}
+                  {["Role", "Date", "Score", "Status", ""].map(
+                    (heading) => (
+                      <th
+                        key={heading}
+                        className="px-5 py-3 font-mono text-[10px] font-normal tracking-widest text-muted-foreground uppercase"
+                      >
+                        {heading}
+                      </th>
+                    )
+                  )}
                 </tr>
               </thead>
 

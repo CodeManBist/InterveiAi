@@ -1,6 +1,8 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import { clerkMiddleware, getAuth } from '@clerk/express'
+import { verifyWebhook } from "@clerk/express/webhooks";
 
 import connectDB from "./db.ts";
 import { createInterviewSchema } from "./schemas/interview.schem.ts";
@@ -14,15 +16,21 @@ import { createLiveToken } from "./services/gemini-live.service.ts";
 import { evaluateInterview } from "./services/evaluate-interview.service.ts";
 
 import Interview from "./models/Interview.model.ts";
+import User from "./models/User.model.ts";
 
 dotenv.config();
 
 const app = express();
 
-
 // =====================================================
 // MIDDLEWARE
 // =====================================================
+app.use(clerkMiddleware())
+
+app.use(
+  "/api/webhooks/clerk",
+  express.raw({ type: "application/json" })
+);
 
 app.use(express.json());
 
@@ -34,13 +42,145 @@ app.use(
 
 connectDB();
 
+const requireAuth = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  const { isAuthenticated, userId } = getAuth(req);
+
+  if (!isAuthenticated || !userId) {
+    return res.status(401).json({
+      message: "Unauthorized",
+    });
+  }
+
+  res.locals.clerkUserId = userId;
+
+  next();
+};
+
+app.post("/api/webhooks/clerk", async (req, res) => {
+  try {
+    const evt = await verifyWebhook(req);
+
+    console.log("Clerk webhook received:", evt.type);
+
+    // =====================================================
+    // USER CREATED
+    // =====================================================
+
+    if (evt.type === "user.created") {
+      const {
+        id,
+        username,
+        first_name,
+        last_name,
+        image_url,
+        email_addresses,
+        primary_email_address_id,
+      } = evt.data;
+
+      const primaryEmail = email_addresses.find(
+        (email) => email.id === primary_email_address_id
+      );
+
+      if (!primaryEmail) {
+        return res.status(400).json({
+          message: "Primary email not found",
+        });
+      }
+
+      await User.create({
+        clerkUserId: id,
+        username: username || primaryEmail.email_address,
+        email: primaryEmail.email_address,
+
+        ...(first_name ? { firstName: first_name } : {}),
+        ...(last_name ? { lastName: last_name } : {}),
+        ...(image_url ? { profileImage: image_url } : {}),
+      });
+
+      console.log("User created in MongoDB:", id);
+    }
+
+    // =====================================================
+    // USER UPDATED
+    // =====================================================
+
+    if (evt.type === "user.updated") {
+      const {
+        id,
+        username,
+        first_name,
+        last_name,
+        image_url,
+        email_addresses,
+        primary_email_address_id,
+      } = evt.data;
+
+      const primaryEmail = email_addresses.find(
+        (email) => email.id === primary_email_address_id
+      );
+
+      await User.findOneAndUpdate(
+        { clerkUserId: id },
+        {
+          ...(username ? { username } : {}),
+          ...(primaryEmail?.email_address
+            ? { email: primaryEmail.email_address }
+            : {}),
+          ...(first_name ? { firstName: first_name } : {}),
+          ...(last_name ? { lastName: last_name } : {}),
+          ...(image_url ? { profileImage: image_url } : {}),
+        },
+        {
+          new: true,
+        }
+      );
+
+      console.log("User updated in MongoDB:", id);
+    }
+
+    // =====================================================
+    // USER DELETED
+    // =====================================================
+
+    if (evt.type === "user.deleted") {
+      const clerkUserId = evt.data.id;
+
+      if (!clerkUserId) {
+        return res.status(400).json({
+          message: "Clerk user ID is missing",
+        });
+      }
+
+      await User.findOneAndDelete({
+        clerkUserId: clerkUserId,
+      });
+
+      console.log("User deleted from MongoDB:", clerkUserId);
+    }
+
+    return res.status(200).json({
+      success: true,
+    });
+  } catch (error) {
+    console.error("Clerk webhook error:", error);
+
+    return res.status(400).json({
+      message: "Webhook verification failed",
+    });
+  }
+});
+
 app.get("/test", (req, res) => {
   res.json({
     message: "Test route working!",
   });
 });
 
-app.get("/live-token", async (req, res) => {
+app.get("/live-token", requireAuth, async (req, res) => {
   try {
     const token = await createLiveToken();
 
@@ -60,11 +200,19 @@ app.get("/live-token", async (req, res) => {
 // =====================================================
 
 app.post(
-  "/pre-interview",
+  "/pre-interview", requireAuth,
   upload.single("resume"),
   async (req, res) => {
 
     try {
+
+      const { userId } = getAuth(req);
+
+      if(!userId) {
+        return res.status(401).json({
+          message: "Unauthorized",
+        });
+      }
 
       // -----------------------------------------------
       // Validate request
@@ -188,6 +336,7 @@ app.post(
 
 app.get(
   "/interview/:interviewId",
+  requireAuth,
   async (req, res) => {
 
     try {
@@ -245,7 +394,7 @@ app.get(
 // =====================================================
 
 app.patch(
-  "/interview/:interviewId/start",
+  "/interview/:interviewId/start", requireAuth,
   async (req, res) => {
     try {
       const { interviewId } = req.params;
@@ -287,6 +436,7 @@ app.patch(
 
 app.post(
   "/interview/:interviewId/messages",
+  requireAuth,
   async (req, res) => {
 
     try {
@@ -398,6 +548,7 @@ app.post(
 
 app.post(
   "/interview/:interviewId/complete",
+  requireAuth,
   async (req, res) => {
 
     try {
