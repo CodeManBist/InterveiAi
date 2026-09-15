@@ -51,7 +51,7 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
   })
 );
 
@@ -938,13 +938,18 @@ app.get("/api/users/me", requireAuth, async (req, res) => {
 // START SERVER
 // =====================================================
 
-const PORT =
-  process.env.PORT || 3000;
+// =====================================================
+// START SERVER
+// =====================================================
 
+const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(
+      `server running on http://localhost:${PORT}`
+    );
+  });
+}
 
-  console.log(
-    `server running on http://localhost:${PORT}`
-  );
-});
+export default app;
