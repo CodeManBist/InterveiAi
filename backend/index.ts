@@ -1,6 +1,8 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import { clerkMiddleware, getAuth } from '@clerk/express'
+import { verifyWebhook } from "@clerk/express/webhooks";
 
 import connectDB from "./db.ts";
 import { createInterviewSchema } from "./schemas/interview.schem.ts";
@@ -14,15 +16,21 @@ import { createLiveToken } from "./services/gemini-live.service.ts";
 import { evaluateInterview } from "./services/evaluate-interview.service.ts";
 
 import Interview from "./models/Interview.model.ts";
+import User from "./models/User.model.ts";
 
 dotenv.config();
 
 const app = express();
 
-
 // =====================================================
 // MIDDLEWARE
 // =====================================================
+app.use(clerkMiddleware())
+
+app.use(
+  "/api/webhooks/clerk",
+  express.raw({ type: "application/json" })
+);
 
 app.use(express.json());
 
@@ -34,13 +42,157 @@ app.use(
 
 connectDB();
 
+const requireAuth = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  const { isAuthenticated, userId } = getAuth(req);
+
+  if (!isAuthenticated || !userId) {
+    return res.status(401).json({
+      message: "Unauthorized",
+    });
+  }
+
+  res.locals.clerkUserId = userId;
+
+  next();
+};
+
+const getCurrentUser = async (req: express.Request) => {
+  const { userId } = getAuth(req);
+
+  if (!userId) {
+    return null;
+  }
+
+  return await User.findOne({
+    clerkUserId: userId,
+  });
+};
+
+app.post("/api/webhooks/clerk", async (req, res) => {
+  try {
+    const evt = await verifyWebhook(req);
+
+    console.log("Clerk webhook received:", evt.type);
+
+    // =====================================================
+    // USER CREATED
+    // =====================================================
+
+    if (evt.type === "user.created") {
+      const {
+        id,
+        username,
+        first_name,
+        last_name,
+        image_url,
+        email_addresses,
+        primary_email_address_id,
+      } = evt.data;
+
+      const primaryEmail = email_addresses.find(
+        (email) => email.id === primary_email_address_id
+      );
+
+      if (!primaryEmail) {
+        return res.status(400).json({
+          message: "Primary email not found",
+        });
+      }
+
+      await User.create({
+        clerkUserId: id,
+        username: username || primaryEmail.email_address,
+        email: primaryEmail.email_address,
+
+        ...(first_name ? { firstName: first_name } : {}),
+        ...(last_name ? { lastName: last_name } : {}),
+        ...(image_url ? { profileImage: image_url } : {}),
+      });
+
+      console.log("User created in MongoDB:", id);
+    }
+
+    // =====================================================
+    // USER UPDATED
+    // =====================================================
+
+    if (evt.type === "user.updated") {
+      const {
+        id,
+        username,
+        first_name,
+        last_name,
+        image_url,
+        email_addresses,
+        primary_email_address_id,
+      } = evt.data;
+
+      const primaryEmail = email_addresses.find(
+        (email) => email.id === primary_email_address_id
+      );
+
+      await User.findOneAndUpdate(
+        { clerkUserId: id },
+        {
+          ...(username ? { username } : {}),
+          ...(primaryEmail?.email_address
+            ? { email: primaryEmail.email_address }
+            : {}),
+          ...(first_name ? { firstName: first_name } : {}),
+          ...(last_name ? { lastName: last_name } : {}),
+          ...(image_url ? { profileImage: image_url } : {}),
+        },
+        {
+          new: true,
+        }
+      );
+
+      console.log("User updated in MongoDB:", id);
+    }
+
+    // =====================================================
+    // USER DELETED
+    // =====================================================
+
+    if (evt.type === "user.deleted") {
+      const clerkUserId = evt.data.id;
+
+      if (!clerkUserId) {
+        return res.status(400).json({
+          message: "Clerk user ID is missing",
+        });
+      }
+
+      await User.findOneAndDelete({
+        clerkUserId: clerkUserId,
+      });
+
+      console.log("User deleted from MongoDB:", clerkUserId);
+    }
+
+    return res.status(200).json({
+      success: true,
+    });
+  } catch (error) {
+    console.error("Clerk webhook error:", error);
+
+    return res.status(400).json({
+      message: "Webhook verification failed",
+    });
+  }
+});
+
 app.get("/test", (req, res) => {
   res.json({
     message: "Test route working!",
   });
 });
 
-app.get("/live-token", async (req, res) => {
+app.get("/live-token", requireAuth, async (req, res) => {
   try {
     const token = await createLiveToken();
 
@@ -60,11 +212,19 @@ app.get("/live-token", async (req, res) => {
 // =====================================================
 
 app.post(
-  "/pre-interview",
+  "/pre-interview", requireAuth,
   upload.single("resume"),
   async (req, res) => {
 
     try {
+
+      const user = await getCurrentUser(req);
+
+      if(!user) {
+        return res.status(401).json({
+          message: "User not found",
+        });
+      }
 
       // -----------------------------------------------
       // Validate request
@@ -121,35 +281,23 @@ app.post(
       // -----------------------------------------------
 
       const interview = await Interview.create({
-
+        userId: user._id,
+      
         candidateProfile: {
-
           name: resume.name,
-
           summary: resume.summary,
-
           github: githubUsername,
-
           skills: resume.skills,
-
           technologies: resume.technologies,
-
           experience: resume.experience,
-
           projects: resume.projects,
-
           education: resume.education,
-
           certifications: resume.certifications,
         },
-
-
+      
         githubRepositories: github,
-
         messages: [],
-
         status: "ready",
-
         questionCount: 0,
       });
 
@@ -188,27 +336,33 @@ app.post(
 
 app.get(
   "/interview/:interviewId",
+  requireAuth,
   async (req, res) => {
-
     try {
-
       const { interviewId } = req.params;
 
+      // Get the currently authenticated MongoDB user
+      const user = await getCurrentUser(req);
 
-      const interview =
-        await Interview.findById(interviewId);
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
 
+      // Only allow the user to access their own interview
+      const interview = await Interview.findOne({
+        _id: interviewId,
+        userId: user._id,
+      });
 
       if (!interview) {
-
         return res.status(404).json({
           message: "Interview not found",
         });
       }
 
-
       return res.status(200).json({
-
         interviewId: interview._id,
 
         candidateProfile:
@@ -229,9 +383,9 @@ app.get(
         score:
           interview.score,
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error("GET INTERVIEW ERROR:", error);
+
       return res.status(500).json({
         message: "Failed to fetch interview",
       });
@@ -239,17 +393,37 @@ app.get(
   }
 );
 
-
 // =====================================================
 // START INTERVIEW
 // =====================================================
 
 app.patch(
   "/interview/:interviewId/start",
+  requireAuth,
   async (req, res) => {
     try {
       const { interviewId } = req.params;
-      const interview = await Interview.findById(interviewId);
+
+      // -----------------------------------------------
+      // Get currently authenticated MongoDB user
+      // -----------------------------------------------
+
+      const user = await getCurrentUser(req);
+
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
+
+      // -----------------------------------------------
+      // Find interview belonging to this user
+      // -----------------------------------------------
+
+      const interview = await Interview.findOne({
+        _id: interviewId,
+        userId: user._id,
+      });
 
       if (!interview) {
         return res.status(404).json({
@@ -257,22 +431,43 @@ app.patch(
         });
       }
 
-      if (interview.status === "completed" || interview.status === "in-progress") {
+      // -----------------------------------------------
+      // Check interview status
+      // -----------------------------------------------
+
+      if (
+        interview.status === "completed" ||
+        interview.status === "in-progress"
+      ) {
         return res.status(400).json({
           message: "Interview has already started or completed",
           status: interview.status,
         });
       }
 
+      // -----------------------------------------------
+      // Start interview
+      // -----------------------------------------------
+
       interview.status = "in-progress";
+
       await interview.save();
+
+      // -----------------------------------------------
+      // Response
+      // -----------------------------------------------
 
       return res.status(200).json({
         message: "Interview started",
         status: interview.status,
       });
+
     } catch (error) {
-      console.error("START INTERVIEW ERROR:", error);
+      console.error(
+        "START INTERVIEW ERROR:",
+        error
+      );
+
       return res.status(500).json({
         message: "Failed to start interview",
       });
@@ -287,11 +482,26 @@ app.patch(
 
 app.post(
   "/interview/:interviewId/messages",
+  requireAuth,
   async (req, res) => {
-
     try {
-
       const { interviewId } = req.params;
+
+      // -----------------------------------------------
+      // Get currently authenticated MongoDB user
+      // -----------------------------------------------
+
+      const user = await getCurrentUser(req);
+
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
+
+      // -----------------------------------------------
+      // Validate message
+      // -----------------------------------------------
 
       const result = messageSchema.safeParse(req.body);
 
@@ -304,8 +514,13 @@ app.post(
 
       const { role, type, content } = result.data;
 
+      // -----------------------------------------------
+      // Find user's interview
+      // -----------------------------------------------
+
       const interview = await Interview.findOne({
         _id: interviewId,
+        userId: user._id,
         status: "in-progress",
       });
 
@@ -315,6 +530,10 @@ app.post(
         });
       }
 
+      // -----------------------------------------------
+      // Create message
+      // -----------------------------------------------
+
       const message = {
         role,
         type,
@@ -322,28 +541,48 @@ app.post(
         timestamp: new Date(),
       };
 
+      // -----------------------------------------------
+      // Save message
+      // -----------------------------------------------
+
       const updatedInterview = await Interview.findOneAndUpdate(
         {
           _id: interviewId,
+          userId: user._id,
           status: "in-progress",
+
           ...(role === "ai" && type === "question"
             ? { questionCount: { $lt: 10 } }
             : {}),
         },
         {
-          $push: { messages: message },
+          $push: {
+            messages: message,
+          },
+
           ...(role === "ai" && type === "question"
-            ? { $inc: { questionCount: 1 } }
+            ? {
+                $inc: {
+                  questionCount: 1,
+                },
+              }
             : {}),
         },
-        { new: true }
+        {
+          new: true,
+        }
       );
 
       if (!updatedInterview) {
         return res.status(409).json({
-          message: "Interview changed before the message could be saved",
+          message:
+            "Interview changed before the message could be saved",
         });
       }
+
+      // -----------------------------------------------
+      // Calculate question count
+      // -----------------------------------------------
 
       const questionCount = updatedInterview.messages.filter(
         (savedMessage) =>
@@ -351,16 +590,29 @@ app.post(
           savedMessage.type === "question"
       ).length;
 
+      // -----------------------------------------------
+      // Check final answer
+      // -----------------------------------------------
+
       const isFinalAnswer =
         role === "user" &&
         type === "answer" &&
         questionCount === 10;
 
+      // -----------------------------------------------
+      // Automatically complete after final answer
+      // -----------------------------------------------
+
       if (isFinalAnswer) {
-        const evaluation = await evaluateInterview(updatedInterview);
+        const evaluation =
+          await evaluateInterview(updatedInterview);
 
         await Interview.updateOne(
-          { _id: interviewId, status: "in-progress" },
+          {
+            _id: interviewId,
+            userId: user._id,
+            status: "in-progress",
+          },
           {
             $set: {
               score: evaluation,
@@ -371,16 +623,34 @@ app.post(
         );
       }
 
-      const savedInterview = await Interview.findById(interviewId);
+      // -----------------------------------------------
+      // Get latest interview
+      // -----------------------------------------------
+
+      const savedInterview =
+        await Interview.findOne({
+          _id: interviewId,
+          userId: user._id,
+        });
+
+      // -----------------------------------------------
+      // Response
+      // -----------------------------------------------
 
       return res.status(201).json({
         message: "Interview message saved",
-        questionCount: savedInterview?.questionCount ?? questionCount,
+        questionCount:
+          savedInterview?.questionCount ?? questionCount,
         status: savedInterview?.status,
         score: savedInterview?.score,
       });
+
     } catch (error) {
-      console.error("SAVE MESSAGE ERROR:", error);
+      console.error(
+        "SAVE MESSAGE ERROR:",
+        error
+      );
+
       return res.status(500).json({
         message: "Failed to save message",
       });
@@ -389,54 +659,71 @@ app.post(
 );
 
 
-
-
-
 // =====================================================
 // COMPLETE INTERVIEW MANUALLY
 // =====================================================
 
 app.post(
   "/interview/:interviewId/complete",
+  requireAuth,
   async (req, res) => {
-
     try {
-
       const { interviewId } = req.params;
 
+      // -----------------------------------------------
+      // Get currently authenticated MongoDB user
+      // -----------------------------------------------
 
-      const interview =
-        await Interview.findById(interviewId);
+      const user = await getCurrentUser(req);
 
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
+
+      // -----------------------------------------------
+      // Find interview belonging to this user
+      // -----------------------------------------------
+
+      const interview = await Interview.findOne({
+        _id: interviewId,
+        userId: user._id,
+      });
 
       if (!interview) {
-
         return res.status(404).json({
           message: "Interview not found",
         });
       }
 
-
+      // -----------------------------------------------
       // Already completed
+      // -----------------------------------------------
 
-      if (
-        interview.status === "completed"
-      ) {
-
+      if (interview.status === "completed") {
         return res.status(400).json({
-
-          message:
-            "Interview already completed",
+          message: "Interview already completed",
         });
       }
 
+      // -----------------------------------------------
+      // Calculate persisted question count
+      // -----------------------------------------------
 
-      const persistedQuestionCount = interview.messages.filter(
-        (message) => message.role === "ai" && message.type === "question"
-      ).length;
+      const persistedQuestionCount =
+        interview.messages.filter(
+          (message) =>
+            message.role === "ai" &&
+            message.type === "question"
+        ).length;
 
-      if (interview.questionCount !== persistedQuestionCount) {
-        interview.questionCount = persistedQuestionCount;
+      if (
+        interview.questionCount !==
+        persistedQuestionCount
+      ) {
+        interview.questionCount =
+          persistedQuestionCount;
       }
 
       console.log(
@@ -448,35 +735,32 @@ app.post(
         }
       );
 
-
       // -----------------------------------------------
-      // Evaluate
+      // Evaluate interview
       // -----------------------------------------------
 
       const evaluation =
         await evaluateInterview(interview);
-
 
       console.log(
         "Evaluation:",
         evaluation
       );
 
-
       // -----------------------------------------------
-      // Save score
+      // Save score and status
       // -----------------------------------------------
 
       interview.score = evaluation;
-
       interview.status = "completed";
-
 
       await interview.save();
 
+      // -----------------------------------------------
+      // Response
+      // -----------------------------------------------
 
       return res.status(200).json({
-
         message:
           "Interview completed successfully",
 
@@ -487,23 +771,19 @@ app.post(
           interview.status,
       });
 
-
     } catch (error) {
-
       console.error(
         "COMPLETE INTERVIEW ERROR:",
         error
       );
 
       return res.status(500).json({
-
         message:
           "Failed to complete interview",
       });
     }
   }
 );
-
 
 // =====================================================
 // START SERVER

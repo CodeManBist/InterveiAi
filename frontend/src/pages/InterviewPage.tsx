@@ -1,6 +1,4 @@
-
 import { useEffect, useRef, useState } from "react";
-import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -23,6 +21,7 @@ import {
 } from "../utils/mediaUtils";
 
 import { cn } from "@/lib/utils";
+import { useApi } from "@/lib/useApi";
 
 interface CandidateProfile {
   name?: string;
@@ -39,6 +38,7 @@ interface CandidateProfile {
 const MAX_QUESTIONS = 10;
 
 const InterviewPage = () => {
+  const api = useApi();
   const navigate = useNavigate();
 
   const { interviewId } =
@@ -164,8 +164,8 @@ const InterviewPage = () => {
           return;
         }
 
-        const response = await axios.get(
-          `http://localhost:3000/interview/${interviewId}`,
+        const response = await api.get(
+          `/interview/${interviewId}`,
         );
 
         const data = response.data;
@@ -245,8 +245,8 @@ const InterviewPage = () => {
             );
 
             const response =
-              await axios.post(
-                `http://localhost:3000/interview/${interviewId}/messages`,
+              await api.post(
+                `/interview/${interviewId}/messages`,
                 {
                   role,
                   type,
@@ -339,8 +339,8 @@ const InterviewPage = () => {
 
       // Ask backend for latest status
       const response =
-        await axios.get(
-          `http://localhost:3000/interview/${interviewId}`,
+        await api.get(
+          `/interview/${interviewId}`,
         );
 
       console.log(
@@ -354,8 +354,8 @@ const InterviewPage = () => {
         response.data.status !==
         "completed"
       ) {
-        await axios.post(
-          `http://localhost:3000/interview/${interviewId}/complete`,
+        await api.post(
+          `/interview/${interviewId}/complete`,
         );
       }
 
@@ -698,8 +698,8 @@ const InterviewPage = () => {
 
       // Get interview data
       const interviewResponse =
-        await axios.get(
-          `http://localhost:3000/interview/${interviewId}`,
+        await api.get(
+          `/interview/${interviewId}`,
         );
 
       const {
@@ -728,14 +728,14 @@ const InterviewPage = () => {
       );
 
       // Start backend interview
-      await axios.patch(
-        `http://localhost:3000/interview/${interviewId}/start`,
+      await api.patch(
+        `/interview/${interviewId}/start`,
       );
 
       // Get Gemini token
       const tokenResponse =
-        await axios.get(
-          "http://localhost:3000/live-token",
+        await api.get(
+          "/live-token",
         );
 
       if (!tokenResponse.data?.token) {

@@ -1,12 +1,25 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
+import { useAuth, useClerk } from "@clerk/react";
 
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    setOpen(false);
+
+    await signOut();
+
+    navigate("/");
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
@@ -21,9 +34,19 @@ export function SiteHeader() {
 
         {/* Desktop navigation */}
         <div className="hidden items-center gap-2 md:flex">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/login">Sign in</Link>
-          </Button>
+          {isSignedIn ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+            >
+              Logout
+            </Button>
+          ) : (
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/login">Sign in</Link>
+            </Button>
+          )}
 
           <Button asChild size="sm">
             <Link to="/new-interview">Start Interview</Link>
@@ -48,16 +71,27 @@ export function SiteHeader() {
       {open && (
         <div className="border-t border-border bg-background md:hidden">
           <div className="shell flex gap-2 py-4">
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="flex-1"
-            >
-              <Link to="/login" onClick={() => setOpen(false)}>
-                Sign in
-              </Link>
-            </Button>
+            {isSignedIn ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={handleLogout}
+              >
+                Logout
+              </Button>
+            ) : (
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="flex-1"
+              >
+                <Link to="/login" onClick={() => setOpen(false)}>
+                  Sign in
+                </Link>
+              </Button>
+            )}
 
             <Button asChild size="sm" className="flex-1">
               <Link

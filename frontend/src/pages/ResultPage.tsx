@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 
 import {
   ArrowLeft,
-  Trophy,
   TrendingUp,
   MessageSquare,
   Zap,
@@ -15,8 +13,10 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useApi } from "@/lib/useApi";
 
 const ResultPage = () => {
+  const api = useApi();
   const navigate = useNavigate();
   const { interviewId } = useParams();
 
@@ -34,8 +34,8 @@ const ResultPage = () => {
           return;
         }
 
-        const response = await axios.get(
-          `http://localhost:3000/interview/${interviewId}`
+        const response = await api.get(
+          `/interview/${interviewId}`
         );
 
         const {
