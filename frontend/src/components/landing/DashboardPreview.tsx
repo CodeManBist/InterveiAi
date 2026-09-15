@@ -5,7 +5,7 @@ import { ScoreLine } from "./ScoreLine";
 export function DashboardPreview({ className }: { className?: string }) {
   return (
     <ScreenFrame
-      label="kernel.app/dashboard"
+      label="intervue.app/dashboard"
       className={className}
     >
       <div className="bg-card px-5 py-5">

@@ -25,7 +25,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <p className="font-mono text-[11px] text-muted-foreground">
-          © 2026 Kernel Labs
+          © 2026 Intervue Labs
         </p>
       </div>
 

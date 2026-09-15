@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 export function InterviewPreview({ className }: { className?: string }) {
   return (
     <ScreenFrame
-      label="kernel.app/interview/iv-2841"
+      label="intervue.app/interview/iv-2841"
       className={className}
     >
       <div className="bg-card">

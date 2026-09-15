@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import { clerkMiddleware, getAuth } from '@clerk/express'
 import { verifyWebhook } from "@clerk/express/webhooks";
+import { v2 as cloudinary } from "cloudinary";
 
 import connectDB from "./db.ts";
 import { createInterviewSchema } from "./schemas/interview.schem.ts";
@@ -19,6 +20,20 @@ import Interview from "./models/Interview.model.ts";
 import User from "./models/User.model.ts";
 
 dotenv.config();
+
+const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME;
+const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY;
+const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET;
+
+if (!cloudinaryCloudName || !cloudinaryApiKey || !cloudinaryApiSecret) {
+  throw new Error("Missing Cloudinary environment variables");
+}
+
+cloudinary.config({
+  cloud_name: cloudinaryCloudName,
+  api_key: cloudinaryApiKey,
+  api_secret: cloudinaryApiSecret,
+});
 
 const app = express();
 
@@ -71,6 +86,80 @@ const getCurrentUser = async (req: express.Request) => {
     clerkUserId: userId,
   });
 };
+
+// =====================================================
+// UPDATE PROFILE IMAGE
+// =====================================================
+
+app.patch(
+  "/api/users/profile-image",
+  requireAuth,
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      const user = await getCurrentUser(req);
+
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          message: "Profile image is required",
+        });
+      }
+      
+      const file = req.file;
+
+      const result = await new Promise<{
+        secure_url: string;
+        public_id: string;
+      }>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "intervue/profile-images",
+            resource_type: "image",
+          },
+          (error, result) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+
+            if (!result) {
+              reject(new Error("Cloudinary upload failed"));
+              return;
+            }
+
+            resolve({
+              secure_url: result.secure_url,
+              public_id: result.public_id,
+            });
+          },
+        );
+
+        stream.end(file.buffer);
+      });
+
+      user.profileImage = result.secure_url;
+
+      await user.save();
+
+      return res.status(200).json({
+        message: "Profile image updated successfully",
+        profileImage: user.profileImage,
+      });
+    } catch (error) {
+      console.error("PROFILE IMAGE UPDATE ERROR:", error);
+
+      return res.status(500).json({
+        message: "Failed to update profile image",
+      });
+    }
+  },
+);
 
 app.post("/api/webhooks/clerk", async (req, res) => {
   try {
@@ -784,6 +873,66 @@ app.post(
     }
   }
 );
+
+// GET INTERVIEWS
+app.get("/interviews", requireAuth, async (req, res) => {
+  try {
+    const user = await getCurrentUser(req);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    const interviews = await Interview.find({
+      userId: user._id,
+    })
+      .sort({ createdAt: -1 })
+      .select(
+        "_id candidateProfile questionCount status score createdAt updatedAt"
+      );
+
+    return res.status(200).json({
+      interviews,
+    });
+  } catch (error) {
+    console.error("Failed to fetch interviews:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch interviews",
+    });
+  }
+});
+
+app.get("/api/users/me", requireAuth, async (req, res) => {
+  try {
+    const user = await getCurrentUser(req);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      user: {
+        clerkUserId: user.clerkUserId,
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImage: user.profileImage,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to fetch current user:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch user",
+    });
+  }
+});
 
 // =====================================================
 // START SERVER

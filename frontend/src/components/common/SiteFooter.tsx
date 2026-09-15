@@ -41,7 +41,7 @@ export function SiteFooter() {
         </nav>
 
         <p className="font-mono text-xs text-muted-foreground">
-          © 2026 Kernel
+          © 2026 Intervue
         </p>
       </div>
     </footer>

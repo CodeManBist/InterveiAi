@@ -9,6 +9,7 @@ import SignupPage from "./pages/SignupPage";
 import DashboardPage from "./pages/DashboardPage";
 import InterviewsPage from "./pages/InterviewsPage";
 import ProfilePage from "./pages/ProfilePage";
+import SettingsPage from "./pages/SettingsPage";
 import SSOCallbackPage from "./pages/SSOCallbackPage";
 
 const App = () => {
@@ -46,6 +47,7 @@ const App = () => {
         />
 
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </BrowserRouter>
   );

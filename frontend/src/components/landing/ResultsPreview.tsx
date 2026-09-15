@@ -5,7 +5,7 @@ import { ScoreBar } from "./ScoreBar";
 export function ResultsPreview({ className }: { className?: string }) {
   return (
     <ScreenFrame
-      label="kernel.app/result/iv-2841"
+      label="intervue.app/result/iv-2841"
       className={className}
     >
       <div className="bg-card">

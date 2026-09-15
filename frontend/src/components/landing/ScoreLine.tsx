@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import {
@@ -11,10 +10,17 @@ import {
   YAxis,
 } from "recharts";
 
-import { progress } from "../../lib/mock-data";
+export interface ScoreLineData {
+  label: string;
+  score: number;
+}
 
-export function ScoreLine() {
-  const [mounted, setMounted] = useState<boolean>(false);
+interface ScoreLineProps {
+  data?: ScoreLineData[];
+}
+
+export function ScoreLine({ data = [] }: ScoreLineProps) {
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -24,10 +30,20 @@ export function ScoreLine() {
     return <div className="h-full w-full" />;
   }
 
+  if (data.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p className="text-sm text-muted-foreground">
+          Complete an interview to see your performance.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <LineChart
-        data={progress}
+        data={data}
         margin={{
           top: 8,
           right: 8,
