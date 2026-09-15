@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@clerk/react";
 import { Upload, FileText, Loader2 } from "lucide-react";
 
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -8,9 +8,12 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useApi } from "@/lib/useApi";
 
 function NewInterviewPage() {
+  const api = useApi();
   const navigate = useNavigate();
+  const { getToken } = useAuth();
 
   const [github, setGithub] = useState("");
   const [resume, setResume] = useState<File | null>(null);
@@ -45,17 +48,36 @@ function NewInterviewPage() {
       setLoading(true);
       setError("");
 
+      // -----------------------------------------------
+      // Get Clerk authentication token
+      // -----------------------------------------------
+
+      const token = await getToken();
+
+      if (!token) {
+        setError("Authentication token not available.");
+        return;
+      }
+
+      // -----------------------------------------------
+      // Create form data
+      // -----------------------------------------------
+
       const formData = new FormData();
 
       formData.append("githubUsername", github.trim());
       formData.append("resume", resume);
 
-      const response = await axios.post(
-        "http://localhost:3000/pre-interview",
-        formData,
-      );
+      // -----------------------------------------------
+      // Create interview
+      // -----------------------------------------------
 
-      console.log("Backend response:", response.data);
+      const response = await api.post("/pre-interview", formData);
+
+      console.log(
+        "Backend response:",
+        response.data,
+      );
 
       const { interviewId } = response.data;
 
@@ -66,7 +88,10 @@ function NewInterviewPage() {
 
       navigate(`/interview/${interviewId}`);
     } catch (error) {
-      console.error("Failed to create interview:", error);
+      console.error(
+        "Failed to create interview:",
+        error,
+      );
 
       if (axios.isAxiosError(error)) {
         setError(
@@ -74,7 +99,9 @@ function NewInterviewPage() {
             "Something went wrong. Please try again.",
         );
       } else {
-        setError("Something went wrong. Please try again.");
+        setError(
+          "Something went wrong. Please try again.",
+        );
       }
     } finally {
       setLoading(false);
@@ -209,7 +236,9 @@ function NewInterviewPage() {
                   </dt>
 
                   <dd className="max-w-[180px] truncate text-right font-medium">
-                    {resume ? resume.name : "Not uploaded"}
+                    {resume
+                      ? resume.name
+                      : "Not uploaded"}
                   </dd>
                 </div>
 
