@@ -1,15 +1,17 @@
 {
-    "version": 2,
-    "builds": [
-      {
-        "src": "index.ts",
-        "use": "@vercel/node"
-      }
-    ],
-    "routes": [
-      {
-        "src": "/(.*)",
-        "dest": "index.ts"
-      }
-    ]
-  }
+  "version": 2,
+  "bunVersion": "1.x",
+  "buildCommand": "cd ../.. && bun install && cd packages/db && bunx prisma generate && cd ../../apps/backend && bun run build",
+  "builds": [
+    {
+      "src": "dist/index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "dist/index.js"
+    }
+  ]
+}
