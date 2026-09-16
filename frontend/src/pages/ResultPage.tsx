@@ -15,13 +15,28 @@ import {
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/useApi";
 
+interface EvaluationScore {
+  overall: number;
+  technical: number;
+  problemSolving: number;
+  communication: number;
+  strengths?: string[];
+  weaknesses?: string[];
+  feedback?: string;
+}
+
+interface CandidateProfile {
+  name?: string;
+  [key: string]: unknown;
+}
+
 const ResultPage = () => {
   const api = useApi();
   const navigate = useNavigate();
   const { interviewId } = useParams();
 
-  const [score, setScore] = useState(null);
-  const [candidateProfile, setCandidateProfile] = useState(null);
+  const [score, setScore] = useState<EvaluationScore | null>(null);
+  const [candidateProfile, setCandidateProfile] = useState<CandidateProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -62,13 +77,13 @@ const ResultPage = () => {
     fetchResults();
   }, [interviewId]);
 
-  const getScoreColor = (score) => {
+  const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-500";
     if (score >= 60) return "text-yellow-500";
     return "text-red-500";
   };
 
-  const getScoreBgColor = (score) => {
+  const getScoreBgColor = (score: number) => {
     if (score >= 80) return "bg-green-500/10";
     if (score >= 60) return "bg-yellow-500/10";
     return "bg-red-500/10";
@@ -347,7 +362,7 @@ const ResultPage = () => {
                 <ul className="mt-4 space-y-3 text-[13px] leading-relaxed text-muted-foreground">
 
                   {score.strengths.map(
-                    (strength, index) => (
+                    (strength: string, index: number) => (
                       <li
                         key={index}
                         className="border-l-2 border-primary pl-3"
@@ -381,7 +396,7 @@ const ResultPage = () => {
                 <ul className="mt-4 space-y-3 text-[13px] leading-relaxed text-muted-foreground">
 
                   {score.weaknesses.map(
-                    (weakness, index) => (
+                    (weakness: string, index: number) => (
                       <li
                         key={index}
                         className="border-l-2 border-destructive pl-3"
