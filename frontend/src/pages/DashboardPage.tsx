@@ -214,7 +214,7 @@ function DashboardPage() {
           action={
             <Button
               className="flex items-center justify-center gap-2 px-3 py-5"
-              asChild
+              
             >
               <Link
                 className="flex items-center justify-center gap-2"

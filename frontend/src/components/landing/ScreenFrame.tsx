@@ -34,11 +34,17 @@ export function ScreenFrame({
   );
 }
 
+interface WaveformProps {
+  bars?: number;
+  className?: string;
+  active?: boolean;
+}
+
 export function Waveform({
   bars = 28,
   className,
   active = true,
-}) {
+}: WaveformProps) {
   return (
     <div
       className={cn(

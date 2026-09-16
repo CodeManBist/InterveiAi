@@ -47,11 +47,11 @@ function LandingPage() {
           </p>
 
           <div className="mt-9 flex flex-wrap gap-3">
-            <Button asChild size="lg">
+            <Button  size="lg">
               <Link to="/new-interview">Start an Interview</Link>
             </Button>
 
-            <Button asChild size="lg" variant="outline">
+            <Button  size="lg" variant="outline">
               <Link to="/result/iv-2841">See Results</Link>
             </Button>
           </div>
@@ -181,7 +181,7 @@ function LandingPage() {
           </p>
 
           <div className="mt-9">
-            <Button asChild size="lg" variant="secondary">
+            <Button  size="lg" variant="secondary">
               <Link to="/new-interview">Start an Interview</Link>
             </Button>
           </div>

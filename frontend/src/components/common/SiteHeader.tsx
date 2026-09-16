@@ -43,12 +43,12 @@ export function SiteHeader() {
               Logout
             </Button>
           ) : (
-            <Button asChild variant="ghost" size="sm">
+            <Button variant="ghost" size="sm">
               <Link to="/login">Sign in</Link>
             </Button>
           )}
 
-          <Button asChild size="sm">
+          <Button size="sm">
             <Link to="/new-interview">Start Interview</Link>
           </Button>
         </div>
@@ -82,7 +82,7 @@ export function SiteHeader() {
               </Button>
             ) : (
               <Button
-                asChild
+                
                 variant="outline"
                 size="sm"
                 className="flex-1"
@@ -93,7 +93,7 @@ export function SiteHeader() {
               </Button>
             )}
 
-            <Button asChild size="sm" className="flex-1">
+            <Button  size="sm" className="flex-1">
               <Link
                 to="/new-interview"
                 onClick={() => setOpen(false)}

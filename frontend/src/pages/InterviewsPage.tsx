@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
 
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -40,7 +40,6 @@ interface Interview {
 }
 
 function InterviewsPage() {
-  const navigate = useNavigate();
   const api = useApi();
 
   const [interviews, setInterviews] = useState<Interview[]>([]);
@@ -129,7 +128,7 @@ function InterviewsPage() {
           action={
             <Button
               className="flex items-center justify-center gap-2 px-3 py-5"
-              asChild
+              variant="outline"
             >
               <Link
                 className="flex items-center justify-center gap-2"
@@ -159,7 +158,7 @@ function InterviewsPage() {
 
           <Select
             value={role}
-            onValueChange={setRole}
+            onValueChange={(value) => setRole(value ?? "")}
           >
             <SelectTrigger className="sm:w-52">
               <SelectValue placeholder="Candidate" />
@@ -183,7 +182,7 @@ function InterviewsPage() {
 
           <Select
             value={sort}
-            onValueChange={setSort}
+            onValueChange={(value) => setSort(value ?? "")}
           >
             <SelectTrigger className="sm:w-44">
               <SelectValue placeholder="Sort" />
@@ -225,7 +224,7 @@ function InterviewsPage() {
               with its full report and score history.
             </p>
 
-            <Button asChild className="mt-6">
+            <Button variant="outline" className="mt-6">
               <Link to="/new-interview">
                 Start your first interview
               </Link>

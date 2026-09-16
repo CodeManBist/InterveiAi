@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useUser, useClerk } from "@clerk/react";
 import {
   LogOut,
   Menu,
@@ -14,12 +15,27 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { candidate } from "@/lib/mock-data";
 
 import { DashboardNavigation } from "./DashboardNavigation";
 
 export function MobileSidebar() {
   const [open, setOpen] = useState(false);
+  const { user } = useUser();
+  const { signOut } = useClerk();
+
+  // Build initials: "Sagar Bist" → "SB"
+  const initials =
+    (user?.firstName?.[0] ?? "") + (user?.lastName?.[0] ?? "") ||
+    user?.username?.[0]?.toUpperCase() ||
+    "?";
+
+  const displayName =
+    user?.fullName ||
+    user?.username ||
+    "User";
+
+  const displayEmail =
+    user?.primaryEmailAddress?.emailAddress || "";
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden">
@@ -49,17 +65,25 @@ export function MobileSidebar() {
 
           <div className="mt-8 border-t border-border pt-4">
             <div className="flex items-center gap-3 px-1">
-              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary font-mono text-[11px] text-primary-foreground">
-                AM
-              </span>
+              {user?.imageUrl ? (
+                <img
+                  src={user.imageUrl}
+                  alt={displayName}
+                  className="h-8 w-8 rounded-md object-cover"
+                />
+              ) : (
+                <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary font-mono text-[11px] text-primary-foreground">
+                  {initials.toUpperCase()}
+                </span>
+              )}
 
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-medium">
-                  {candidate.name}
+                  {displayName}
                 </p>
 
                 <p className="truncate font-mono text-[10px] text-muted-foreground">
-                  {candidate.email}
+                  {displayEmail}
                 </p>
               </div>
             </div>
@@ -83,14 +107,16 @@ export function MobileSidebar() {
                 Settings
               </Link>
 
-              <Link
-                to="/login"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  signOut({ redirectUrl: "/" });
+                }}
+                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
               >
                 <LogOut className="h-4 w-4" />
                 Sign out
-              </Link>
+              </button>
             </div>
           </div>
         </SheetContent>
