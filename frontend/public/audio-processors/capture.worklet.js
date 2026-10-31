@@ -22,10 +22,19 @@ class AudioCaptureProcessor extends AudioWorkletProcessor {
 
         // When buffer is full, send it to main thread
         if (this.bufferIndex >= this.bufferSize) {
-          // Send the buffered audio to the main thread
+          let sumSquares = 0;
+          for (let j = 0; j < this.bufferSize; j++) {
+            const sample = this.buffer[j];
+            sumSquares += sample * sample;
+          }
+          const rms = Math.sqrt(sumSquares / this.bufferSize);
+
+          // Send the buffered audio to the main thread.
+          // Capture time is stamped on the main thread (not AudioContext time).
           this.port.postMessage({
             type: "audio",
             data: this.buffer.slice(),
+            rms,
           });
 
           // Reset buffer
