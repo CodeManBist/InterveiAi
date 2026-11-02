@@ -11,6 +11,7 @@ import webhookRouter from "./routes/webhook.routes.ts";
 dotenv.config();
 
 const app = express();
+const API_V1_PREFIX = "/api/v1";
 
 const configuredOrigins = (process.env.FRONTEND_URL || "")
   .split(",")
@@ -51,9 +52,9 @@ app.use(
 
 app.use(express.json());
 
-app.use("/api/users", userRouter);
 app.use("/api/webhooks/clerk", webhookRouter);
-app.use("/", healthRouter);
-app.use("/", interviewRouter);
+app.use(API_V1_PREFIX, healthRouter);
+app.use(API_V1_PREFIX, interviewRouter);
+app.use(`${API_V1_PREFIX}/users`, userRouter);
 
 export default app;
