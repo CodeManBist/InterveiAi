@@ -6,8 +6,13 @@ export function useApi() {
   const { getToken } = useAuth();
 
   const api = useMemo(() => {
+    const baseURL = (
+      import.meta.env.VITE_API_URL ||
+      "http://localhost:3000/api/v1"
+    ).replace(/\/+$/, "");
+
     const instance = axios.create({
-      baseURL: import.meta.env.VITE_API_URL,
+      baseURL,
     });
 
     instance.interceptors.request.use(async (config) => {

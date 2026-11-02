@@ -55,7 +55,7 @@ function DashboardPage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await api.get("/api/users/me");
+        const response = await api.get("/users/me");
         setProfileImage(response.data.user.profileImage);
       } catch (error) {
         console.log("Error fetching user profile", error);

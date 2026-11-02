@@ -27,7 +27,7 @@ function SettingsPage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await api.get("/api/users/me");
+        const response = await api.get("/users/me");
         setProfileImage(response.data.user.profileImage);
       } catch (error) {
         console.error("Failed to fetch user:", error);
@@ -112,7 +112,7 @@ function SettingsPage() {
       formData.append("image", selectedImage);
   
       const response = await api.patch(
-        "/api/users/profile-image",
+        "/users/profile-image",
         formData,
       );
   

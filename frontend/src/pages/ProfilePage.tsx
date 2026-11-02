@@ -15,7 +15,7 @@ function ProfilePage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await api.get("/api/users/me");
+        const response = await api.get("/users/me");
         setProfileImage(response.data.user.profileImage);
       } catch (error) {
         console.error("Failed to fetch user:", error);
