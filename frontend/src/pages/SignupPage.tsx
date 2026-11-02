@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useSignUp } from "@clerk/react";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import { LoadingSpinner } from "@/components/common/LoadingState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -214,7 +215,14 @@ function SignupPage() {
             className="w-full"
             disabled={loading}
           >
-            {loading ? "Verifying..." : "Verify email"}
+            {loading ? (
+              <>
+                <LoadingSpinner />
+                Verifying
+              </>
+            ) : (
+              "Verify email"
+            )}
           </Button>
         </form>
       </AuthLayout>
@@ -337,9 +345,14 @@ function SignupPage() {
           className="w-full"
           disabled={loading}
         >
-          {loading
-            ? "Creating account..."
-            : "Create account"}
+          {loading ? (
+            <>
+              <LoadingSpinner />
+              Creating account
+            </>
+          ) : (
+            "Create account"
+          )}
         </Button>
       </form>
 

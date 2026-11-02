@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { LoadingState } from "@/components/common/LoadingState";
 import { useApi } from "@/lib/useApi";
 
 function SettingsPage() {
@@ -55,9 +56,7 @@ function SettingsPage() {
       <DashboardLayout>
         <div className="min-h-screen bg-background">
           <div className="mx-auto max-w-[1100px] px-6 py-10 lg:px-10">
-            <p className="text-sm text-muted-foreground">
-              Loading settings...
-            </p>
+            <LoadingState label="Loading settings" />
           </div>
         </div>
       </DashboardLayout>

@@ -4,6 +4,7 @@ import { ArrowUpRight, Plus } from "lucide-react";
 import { useUser } from "@clerk/react";
 
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { LoadingState } from "@/components/common/LoadingState";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ScoreLine } from "@/components/landing/ScoreLine";
 import { ScoreBar } from "@/components/landing/ScoreBar";
@@ -198,7 +199,11 @@ function DashboardPage() {
   };
 
   if (!isLoaded) {
-    return <div>Loading...</div>;
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-6">
+        <LoadingState label="Loading dashboard" />
+      </main>
+    );
   }
 
   if (!isSignedIn || !user) {
@@ -330,8 +335,8 @@ function DashboardPage() {
 
           <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-card">
             {loading ? (
-              <div className="px-5 py-12 text-center text-sm text-muted-foreground">
-                Loading interviews...
+              <div className="px-5 py-12">
+                <LoadingState label="Loading interviews" />
               </div>
             ) : error ? (
               <div className="px-5 py-12 text-center text-sm text-destructive">

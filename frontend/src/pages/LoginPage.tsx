@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useSignIn } from "@clerk/react";
 
 import { AuthLayout } from "../components/auth/AuthLayout";
+import { LoadingSpinner } from "@/components/common/LoadingState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -214,7 +215,14 @@ function LoginPage() {
           className="w-full"
           disabled={loading}
         >
-          {loading ? "Signing in..." : "Sign in"}
+          {loading ? (
+            <>
+              <LoadingSpinner />
+              Signing in
+            </>
+          ) : (
+            "Sign in"
+          )}
         </Button>
       </form>
 

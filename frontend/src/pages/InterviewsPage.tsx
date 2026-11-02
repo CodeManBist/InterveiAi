@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
 
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { LoadingState } from "@/components/common/LoadingState";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -202,10 +203,8 @@ function InterviewsPage() {
 
         {/* Loading */}
         {loading ? (
-          <div className="mt-8 rounded-xl border border-border bg-card px-8 py-20 text-center">
-            <p className="text-sm text-muted-foreground">
-              Loading interviews...
-            </p>
+          <div className="mt-8 rounded-xl border border-border bg-card px-8 py-20">
+            <LoadingState label="Loading interviews" />
           </div>
         ) : error ? (
           <div className="mt-8 rounded-xl border border-border bg-card px-8 py-20 text-center">

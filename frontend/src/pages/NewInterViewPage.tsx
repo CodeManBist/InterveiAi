@@ -1,10 +1,11 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@clerk/react";
-import { Upload, FileText, Loader2 } from "lucide-react";
+import { Upload, FileText } from "lucide-react";
 import axios from "axios";
 
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { LoadingSpinner } from "@/components/common/LoadingState";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -275,8 +276,8 @@ function NewInterviewPage() {
               >
                 {loading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Preparing...
+                    <LoadingSpinner />
+                    Preparing
                   </>
                 ) : (
                   <>

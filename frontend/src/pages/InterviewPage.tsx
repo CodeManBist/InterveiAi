@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
-  Loader2,
   Mic,
   MicOff,
   PhoneOff,
@@ -11,6 +10,10 @@ import {
 } from "lucide-react";
 
 import { LogoMark } from "@/components/brand/logo";
+import {
+  LoadingSpinner,
+  LoadingState,
+} from "@/components/common/LoadingState";
 import { Waveform } from "@/components/landing/ScreenFrame";
 import { Button } from "@/components/ui/button";
 
@@ -957,13 +960,7 @@ const InterviewPage = () => {
   ) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-6">
-        <div className="text-center">
-          <Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" />
-
-          <p className="mt-4 text-sm text-muted-foreground">
-            Preparing your interview...
-          </p>
-        </div>
+        <LoadingState label="Preparing your interview" />
       </main>
     );
   }
@@ -1135,8 +1132,8 @@ const InterviewPage = () => {
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Preparing...
+                      <LoadingSpinner />
+                      Preparing
                     </>
                   ) : (
                     <>
@@ -1234,7 +1231,7 @@ const InterviewPage = () => {
                     ) : (
                       <div className="flex min-h-[130px] items-center justify-center">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <LoadingSpinner />
 
                           <span>
                             Waiting for the interviewer...
@@ -1399,7 +1396,7 @@ const InterviewPage = () => {
               >
                 {completing ? (
                   <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <LoadingSpinner className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">
                       Completing...
                     </span>
@@ -1420,4 +1417,3 @@ const InterviewPage = () => {
 };
 
 export default InterviewPage;
-
