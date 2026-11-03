@@ -161,7 +161,7 @@ const ResultPage = () => {
     };
 
     fetchResults();
-  }, [interviewId]);
+  }, [api, interviewId]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-500";

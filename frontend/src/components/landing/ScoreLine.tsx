@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 import {
   CartesianGrid,
   Line,
@@ -20,16 +18,6 @@ interface ScoreLineProps {
 }
 
 export function ScoreLine({ data = [] }: ScoreLineProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return <div className="h-full w-full" />;
-  }
-
   if (data.length === 0) {
     return (
       <div className="flex h-full w-full items-center justify-center">

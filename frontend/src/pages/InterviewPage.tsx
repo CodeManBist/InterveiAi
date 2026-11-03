@@ -214,7 +214,7 @@ const InterviewPage = () => {
     };
 
     loadInterview();
-  }, [interviewId, navigate]);
+  }, [api, interviewId, navigate]);
 
   // --------------------------------
   // Save message

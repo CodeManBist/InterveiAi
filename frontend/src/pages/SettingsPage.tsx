@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/react";
 
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,9 @@ function SettingsPage() {
     null,
   );
 
-  const [previewUrl, setPreviewUrl] = useState<string | null>(
-    null,
+  const previewUrl = useMemo(
+    () => (selectedImage ? URL.createObjectURL(selectedImage) : null),
+    [selectedImage],
   );
 
   useEffect(() => {
@@ -37,19 +38,12 @@ function SettingsPage() {
   }, [api]);
 
   useEffect(() => {
-    if (!selectedImage) {
-      setPreviewUrl(null);
-      return;
-    }
-
-    const objectUrl = URL.createObjectURL(selectedImage);
-
-    setPreviewUrl(objectUrl);
-
     return () => {
-      URL.revokeObjectURL(objectUrl);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
     };
-  }, [selectedImage]);
+  }, [previewUrl]);
 
   if (!isLoaded) {
     return (
@@ -119,7 +113,6 @@ function SettingsPage() {
       console.log("Profile image updated:", response.data);
   
       setSelectedImage(null);
-      setPreviewUrl(null);
   
       await user.reload();
     } catch (error) {

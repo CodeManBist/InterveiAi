@@ -1,8 +1,23 @@
 /**
  * Audio Streamer - Captures and streams microphone audio
  */
+interface AudioClient {
+  sendAudioMessage: (audio: string) => void;
+}
+
+interface AudioConstraints extends MediaTrackConstraints {
+  sampleRate: number;
+  echoCancellation: boolean;
+  noiseSuppression: boolean;
+  autoGainControl: boolean;
+}
+
+interface AudioContextWindow extends Window {
+  webkitAudioContext?: typeof AudioContext;
+}
+
 class AudioStreamer {
-  client: any;
+  client: AudioClient;
   audioContext: AudioContext | null;
   audioWorklet: AudioWorkletNode | null;
   mediaStream: MediaStream | null;
@@ -10,7 +25,7 @@ class AudioStreamer {
   isStreaming: boolean;
   sampleRate: number;
 
-  constructor(geminiClient: any) {
+  constructor(geminiClient: AudioClient) {
     this.client = geminiClient;
     this.audioContext = null;
     this.audioWorklet = null;
@@ -30,7 +45,7 @@ class AudioStreamer {
     }
     try {
       // Build audio constraints
-      const audioConstraints: any = {
+      const audioConstraints: AudioConstraints = {
         sampleRate: this.sampleRate,
         echoCancellation: true,
         noiseSuppression: true,
@@ -49,7 +64,9 @@ class AudioStreamer {
 
       // Create audio context at 16kHz if it doesn't exist
       if (!this.audioContext) {
-        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+        const AudioContextClass =
+          window.AudioContext ||
+          (window as AudioContextWindow).webkitAudioContext;
         this.audioContext = new AudioContextClass({
           sampleRate: this.sampleRate,
         });
@@ -67,7 +84,9 @@ class AudioStreamer {
       );
 
       // Set up message handling from the worklet
-      this.audioWorklet.port.onmessage = (event: any) => {
+      this.audioWorklet.port.onmessage = (
+        event: MessageEvent<{ type: string; data: Float32Array }>,
+      ) => {
         if (!this.isStreaming) return;
 
         if (event.data.type === "audio") {
@@ -190,7 +209,9 @@ class AudioPlayer {
     this.initPromise = (async () => {
       try {
         // Create audio context at 24kHz to match Gemini
-        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+        const AudioContextClass =
+          window.AudioContext ||
+          (window as AudioContextWindow).webkitAudioContext;
         this.audioContext = new AudioContextClass({
           sampleRate: this.sampleRate,
         });
