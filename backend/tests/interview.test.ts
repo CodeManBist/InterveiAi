@@ -44,7 +44,7 @@ import app from "../app.ts";
 describe("Interview API - Create Interview", () => {
     it("should return 400 when githubUsername is missing", async () => {
       const response = await request(app)
-        .post("/pre-interview")
+        .post("/api/v1/pre-interview")
         .send({});
   
       expect(response.status).toBe(400);
@@ -54,7 +54,7 @@ describe("Interview API - Create Interview", () => {
   
     it("should return 400 when githubUsername is empty", async () => {
       const response = await request(app)
-        .post("/pre-interview")
+        .post("/api/v1/pre-interview")
         .send({
           githubUsername: "",
         });
@@ -69,7 +69,7 @@ describe("Interview API - Create Interview", () => {
   
     it("should return 400 when resume is missing", async () => {
       const response = await request(app)
-        .post("/pre-interview")
+        .post("/api/v1/pre-interview")
         .send({
           githubUsername: "CodeManBist",
         });

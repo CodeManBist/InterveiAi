@@ -40,8 +40,8 @@ vi.mock("@clerk/express/webhooks", () => ({
 import app from "../app.ts";
 
 describe("Health API", () => {
-  it("GET /test should return 200", async () => {
-    const response = await request(app).get("/test");
+  it("GET /api/v1/test should return 200", async () => {
+    const response = await request(app).get("/api/v1/test");
 
     expect(response.status).toBe(200);
 
@@ -51,8 +51,8 @@ describe("Health API", () => {
   });
 
   describe("Authentication", () => {
-    it("GET /live-token should return 401 when unauthenticated", async () => {
-        const response = await request(app).get("/live-token");
+    it("GET /api/v1/live-token should return 401 when unauthenticated", async () => {
+        const response = await request(app).get("/api/v1/live-token");
 
         expect(response.status).toBe(401);
         expect(response.body).toEqual({ message: "Unauthorized" });
@@ -60,14 +60,15 @@ describe("Health API", () => {
   });
 
   it("GET /api/users/me should return 401 when unauthenticated", async () => {
-    const response = await request(app).get("/api/users/me");
+    const response = await request(app).get("/api/v1/users/me");
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ message: "Unauthorized" });
   });
 
-  it("GET /interviews should return 401 when unauthenticated", async () => {
-    const response = await request(app).get("/interviews");
+
+  it("GET /api/v1/interviews should return 401 when unauthenticated", async () => {
+    const response = await request(app).get("/api/v1/interviews");
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ message: "Unauthorized" });
